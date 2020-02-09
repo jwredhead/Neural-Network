@@ -1,0 +1,7 @@
+# ignore logs
+*.log
+# ignore build folder
+build/
+# ignore eclipse project folders
+.cproject
+.project

@@ -23,25 +23,25 @@ public:
 	Matrix(const Matrix<T> &rhs); 			// Copy Constructor
 
 	// Matrix Operations
-	Matrix<T>& operator+(const Matrix<T>& rhs);
-	Matrix<T>& operator+=(const Matrix<T>& rhs);
-	Matrix<T>& operator-(const Matrix<T>& rhs);
-	Matrix<T>& operator-=(const Matrix<T>& rhs);
-	Matrix<T>& operator*(const Matrix<T>& rhs);
-	Matrix<T>& operator*=(const Matrix<T>& rhs);
-	Matrix<T>& hadamardProduct(const Matrix<T>& rhs);
-	Matrix<T>& transpose();
+	Matrix<T> operator+(const Matrix<T>& rhs);
+	Matrix<T> operator+=(const Matrix<T>& rhs);
+	Matrix<T> operator-(const Matrix<T>& rhs);
+	Matrix<T> operator-=(const Matrix<T>& rhs);
+	Matrix<T> operator*(const Matrix<T>& rhs);
+	Matrix<T> operator*=(const Matrix<T>& rhs);
+	Matrix<T> hadamardProduct(const Matrix<T>& rhs);
+	Matrix<T> transpose();
 
 
 	// Scalar Operations
-	Matrix<T>& operator+(const T& rhs);
-	Matrix<T>& operator-(const T& rhs);
-	Matrix<T>& operator*(const T& rhs);
-	Matrix<T>& operator/(const T& rhs);
+	Matrix<T> operator+(const T& rhs);
+	Matrix<T> operator-(const T& rhs);
+	Matrix<T> operator*(const T& rhs);
+	Matrix<T> operator/(const T& rhs);
 
 	// Vector Operations
-	std::vector<T>& operator*(const std::vector<T>& rhs);
-	std::vector<T>& diagVec();
+	std::vector<T> operator*(const std::vector<T>& rhs);
+	std::vector<T> diagVec();
 
 	// Member access operations
 	T& operator()(const unsigned& row, const unsigned& col);
@@ -49,7 +49,7 @@ public:
 
 	unsigned getRows() const;
 	unsigned getCols() const;
-	unsigned getSize() const;
+	unsigned long long getSize() const;
 
 private:
 	unsigned long long m_size;
@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream&os, const Matrix<U>& matrix) {
 
 	for (unsigned i=0; i < rows; i++) {
 		for (unsigned j=0; j < cols; j++) {
-			os<< "/t" << matrix(i,j);
+			os<< "\t" << matrix(i,j);
 		}
 		os << std::endl;
 	}
@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream&os, const Matrix<U>& matrix) {
 	return os;
 }
 
-#include "Matrix.cpp" // Required for template class, compiler need implementation within same file
+//#include "Matrix.cpp" // Required for template class, compiler need implementation within same file
 
 
 

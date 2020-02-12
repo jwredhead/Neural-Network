@@ -8,18 +8,23 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-
+enable_testing()
 
 set(Headers
 	../include/Matrix.h
 	../include/MatrixException.h
 )
+list(TRANSFORM Headers PREPEND "include/")
 
 set(Sources
 	Matrix.cpp
 	NeuralNetwork.cpp
 )
 
-add_executable(${This} ${Sources} ${Headers})
+list(TRANSFORM Sources PREPEND "src/")
 
-target_include_directories(${This} PRIVATE ../include)
+add_library(${This} SHARED ${Sources} ${Headers})
+
+target_include_directories(${This} PRIVATE include)
+
+add_subdirectory(test)

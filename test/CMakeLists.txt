@@ -8,6 +8,8 @@ set(Sources
 
 add_executable(${This} ${Sources})
 
+target_include_directories(${This} PRIVATE ../include)
+
 target_link_libraries(${This} PUBLIC
 	gtest
 	gtest_main

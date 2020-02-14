@@ -2,11 +2,15 @@ cmake_minimum_required(VERSION 3.16)
 
 set(This NeuralNetworkTests)
 
-set(Sources
-	MatrixTest.cpp
+set(Headers
+	MatrixTest.h
 )
 
-add_executable(${This} ${Sources})
+set(Sources
+	RunTests.cpp
+)
+
+add_executable(${This} ${Sources} ${Headers})
 
 target_include_directories(${This} PRIVATE ../include)
 

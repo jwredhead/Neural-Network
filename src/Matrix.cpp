@@ -9,56 +9,62 @@
 #include "MatrixException.h"
 
 
-
 // NxM Constructor
 template<typename T>
-Matrix<T>::Matrix(unsigned rows, unsigned columns, const T &initial) :
-		m_rows(rows), m_cols(columns) {
-	m_size = rows * columns;
-	mat.resize(rows);
-	for (unsigned i=0; i < rows; i++) {
-		mat[i].resize(columns, initial);
+Matrix<T>::Matrix(unsigned rows, unsigned cols) : m_rows(rows), m_cols(cols) {
+	m_size = rows * cols;
+	mat = new T[m_size];
+	for (unsigned i=0; i < m_size; i++) {
+		mat[i] = 0.0;
 	}
 }
 
 // NxN Constructor
 template<typename T>
-Matrix<T>::Matrix(unsigned rows, const T &initial) :
-		m_rows(rows), m_cols(rows) {
+Matrix<T>::Matrix(unsigned rows) : m_rows(rows), m_cols(rows){
 	m_size = rows * rows;
-	mat.resize(rows);
-	for (unsigned i=0; i< rows; i++) {
-		mat[i].resize(rows, initial);
+	mat = new T[m_size];
+	for (unsigned i=0; i < m_size; i++) {
+		mat[i] = 0.0;
 	}
+}
+
+// Empty Constructor
+template<typename T>
+Matrix<T>::Matrix() : m_rows(0), m_cols(0), m_size(0) {
+	mat = nullptr;
 }
 
 // Virtual Destructor, set to default
 template<typename T>
-Matrix<T>::~Matrix() = default;
+Matrix<T>::~Matrix() {
+	if(mat != nullptr)
+	{
+		delete mat;
+	}
+	mat = nullptr;
+}
 
 // Assign Constructor
 template<typename T>
 Matrix<T>& Matrix<T>::operator=(const Matrix<T> &rhs) {
-	if (&rhs == this)
-		return *this;
+	if (&rhs == this) return *this;
 
-	unsigned newRows = rhs.getRows();
-	unsigned newCols = rhs.getCols();
-	unsigned newSize = rhs.getSize();
-
-	mat.resize(newRows);
-	for (unsigned i=0; i < newRows; i++)  {
-		mat[i].resize(newCols);
+	if (this->mat != nullptr) {
+		delete this->mat;
+		this->mat = nullptr;
 	}
 
-	for (unsigned i=0; i < newRows; i++) {
-		for (unsigned j=0; j < newCols; j++) {
-			mat[i][j] = rhs(i, j);
-		}
-	}
-	m_rows = newRows;
-	m_cols = newCols;
-	m_size = newSize;
+	this->m_rows = rhs.getRows();
+	this->m_cols = rhs.getCols();
+	this->m_size = rhs.getSize();
+
+	this->mat = new T[m_size];
+    for(unsigned i=0; i < this->getRows(); i++) {
+    	for(unsigned j=0; j < this->getCols(); j++) {
+    		this->mat[i*(this->m_cols)+j] = rhs.mat[i*(rhs.m_cols)+j];
+    	}
+    }
 
 	return *this;
 }
@@ -66,10 +72,35 @@ Matrix<T>& Matrix<T>::operator=(const Matrix<T> &rhs) {
 // Copy Constructor
 template<typename T>
 Matrix<T>::Matrix(const Matrix<T> &rhs) {
-	mat = rhs.mat;
-	m_rows = rhs.getRows();
-	m_cols = rhs.getCols();
-	m_size = rhs.getSize();
+	if(&rhs == this)
+
+	if(this->mat != nullptr) {
+		delete this->mat;
+		this->mat = nullptr;
+	}
+
+	this->m_rows = rhs.getRows();
+	this->m_cols = rhs.getCols();
+	this->m_size = rhs.getSize();
+
+	this->mat = new T[m_size];
+    for(unsigned i=0; i < this->getRows(); i++) {
+    	for(unsigned j=0; j < this->getCols(); j++) {
+    		this->mat[i*(this->m_cols)+j] = rhs.mat[i*(rhs.m_cols)+j];
+    	}
+    }
+}
+
+// Access the individual elements
+template<typename T>
+T& Matrix<T>::operator()(const unsigned& row, const unsigned& col) {
+	return this->mat[row*m_cols+col];
+}
+
+// Access the individual elements (const)
+template<typename T>
+const T& Matrix<T>::operator()(const unsigned& row, const unsigned& col) const {
+	return this->mat[row*(this->m_cols)+col];
 }
 
 // Addition Operator
@@ -79,11 +110,11 @@ Matrix<T> Matrix<T>::operator+(const Matrix<T> &rhs) {
 		throw MatrixException(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Error: Matrix rows and columns must be equal for matrix addition");
 	}
 
-	Matrix<T> result = Matrix(this->m_rows, this->m_cols, 0.0);
+	Matrix<T> result = Matrix(this->m_rows, this->m_cols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) = this->mat[i][j] + rhs(i,j);
+		for (unsigned j=0; j < this->m_cols; j++) {
+			result(i,j) = this->mat[i*(this->m_cols)+j] + rhs(i,j);
 		}
 	}
 
@@ -99,8 +130,8 @@ Matrix<T> Matrix<T>::operator+=(const Matrix<T> &rhs) {
 	}
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			this->mat[i][j] += rhs(i,j);
+		for (unsigned j=0; j < this->m_cols; j++) {
+			this->mat[i*(this->m_cols)+j] = this->mat[i*(this->m_cols)+j] + rhs(i,j);
 		}
 	}
 
@@ -114,11 +145,11 @@ Matrix<T> Matrix<T>::operator-(const Matrix<T> &rhs) {
 		throw MatrixException(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Error: Matrix rows and columns must be equal for matrix subtraction");
 	}
 
-	Matrix<T> result = Matrix(this->m_rows, this->m_cols, 0.0);
+	Matrix<T> result = Matrix(this->m_rows, this->m_cols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) = this->mat[i][j] - rhs(i,j);
+		for (unsigned j=0; j < this->m_cols; j++) {
+			result(i,j) = this->mat[i*(this->m_cols)+j] - rhs(i,j);
 		}
 	}
 
@@ -134,8 +165,8 @@ Matrix<T> Matrix<T>::operator-=(const Matrix<T> &rhs) {
 	}
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			this->mat[i][j] -= rhs(i,j);
+		for (unsigned j=0; j < this->m_cols; j++) {
+			this->mat[i*(this->m_cols)+j] = this->mat[i*(this->m_cols)+j] - rhs(i,j);
 		}
 	}
 
@@ -145,16 +176,19 @@ Matrix<T> Matrix<T>::operator-=(const Matrix<T> &rhs) {
 // Multiplication Operator
 template<typename T>
 Matrix<T> Matrix<T>::operator*(const Matrix<T> &rhs) {
-	if (this->m_cols != rhs.getRows()) {
+	unsigned rhsRows = rhs.getRows();
+	unsigned rhsCols = rhs.getCols();
+
+	if (this->m_cols != rhsRows) {
 		throw MatrixException(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Error: Rows of Matrix A and columns of Matrix B must be equal for matrix multiplication");
 	}
 
-	Matrix<T> result = Matrix(this->m_rows, rhs.getCols(), 0.0);
+	Matrix<T> result = Matrix(this->m_rows, rhsCols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; j < rhs.getCols(); j++) {
-			for (unsigned k ; k < this->m_cols; k++) {
-				result(i,j) += this->mat[i][k] * rhs(k,j);
+		for (unsigned j=0; j < rhsCols; j++) {
+			for (unsigned k=0 ; k < this->m_cols; k++) {
+				result(i,j) += this->mat[i*(this->m_cols)+k] * rhs(k,j);
 			}
 		}
 	}
@@ -165,15 +199,15 @@ Matrix<T> Matrix<T>::operator*(const Matrix<T> &rhs) {
 // Cumulative Multiplication Operator
 template<typename T>
 Matrix<T> Matrix<T>::operator*=(const Matrix<T> &rhs) {
-	if (this->m_cols != rhs.getRows()) {
+	unsigned rhsRows = rhs.getRows();
+
+	if (this->m_cols != rhsRows) {
 		throw MatrixException(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Error: Matrix rows and columns must be equal for matrix multiplication");
 	}
 
-	Matrix<T> result = Matrix(this->m_rows, rhs.getCols(), 0.0);
+	Matrix<T> result = Matrix(this->m_rows, rhs.getCols());
 
-	result = (*this) * rhs;
-
-	(*this) = result;
+	(*this) = (*this) * rhs;
 
 	return *this;
 }
@@ -181,15 +215,15 @@ Matrix<T> Matrix<T>::operator*=(const Matrix<T> &rhs) {
 // Hardamard Product
 template<typename T>
 Matrix<T> Matrix<T>::hadamardProduct(const Matrix<T> &rhs) {
-	if (this->m_cols != rhs.getRows()) {
+	if (this->m_rows != rhs.getRows() || this->m_cols != rhs.getCols()) {
 		throw MatrixException(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Error: Matrix rows and columns must be equal for Hardamard Product");
 	}
 
 	Matrix<T> result = Matrix(this->m_rows, this->m_cols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) = this->mat[i][j] * rhs(i,j);
+		for (unsigned j=0; j< this->m_cols; j++) {
+			result(i,j) = this->mat[i*(this->m_cols)+j] * rhs(i,j);
 		}
 	}
 
@@ -199,25 +233,36 @@ Matrix<T> Matrix<T>::hadamardProduct(const Matrix<T> &rhs) {
 // Transpose
 template<typename T>
 Matrix<T> Matrix<T>::transpose() {
-	Matrix<T> result = Matrix(this->m_cols, this->m_rows, 0.0);
+	Matrix<T> result = Matrix(this->m_cols, this->m_rows);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) =this->mat[j][i];
+		for (unsigned j=0; j< this->m_cols; j++) {
+			result(j,i) =this->mat[i*(this->m_cols)+j];
 		}
 	}
 
 	return result;
 }
 
+// Fill
+template<typename T>
+Matrix<T> Matrix<T>::fill(T val) {
+	for (unsigned i=0; i < this->m_rows; i++) {
+		for (unsigned j=0; j< this->m_cols; j++) {
+			this->mat[i*(this->m_cols) + j] = val;
+		}
+	}
+	return *this;
+}
+
 // Scalar Addition
 template<typename T>
 Matrix<T> Matrix<T>::operator+(const T& rhs) {
-	Matrix<T> result = Matrix(this->m_rows, this->m_cols, 0.0);
+	Matrix<T> result = Matrix(this->m_rows, this->m_cols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) = this->mat[i][j] + rhs;
+		for (unsigned j=0; j < this->m_cols; j++) {
+			result(i,j) = this->mat[i*(this->m_cols)+j] + rhs;
 		}
 	}
 
@@ -227,11 +272,11 @@ Matrix<T> Matrix<T>::operator+(const T& rhs) {
 // Scalar Subtraction
 template<typename T>
 Matrix<T> Matrix<T>::operator-(const T& rhs) {
-	Matrix<T> result = Matrix(this->m_rows, this->m_cols, 0.0);
+	Matrix<T> result = Matrix(this->m_rows, this->m_cols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) = this->mat[i][j] - rhs;
+		for (unsigned j=0; j < this->m_cols; j++) {
+			result(i,j) = this->mat[i*(this->m_cols)+j] - rhs;
 		}
 	}
 
@@ -241,11 +286,11 @@ Matrix<T> Matrix<T>::operator-(const T& rhs) {
 // Scalar Multiplication
 template<typename T>
 Matrix<T> Matrix<T>::operator*(const T& rhs) {
-	Matrix<T> result = Matrix(this->m_rows, this->m_cols, 0.0);
+	Matrix<T> result = Matrix(this->m_rows, this->m_cols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) = this->mat[i][j] * rhs;
+		for (unsigned j=0; j < this->m_cols; j++) {
+			result(i,j) = this->mat[i*(this->m_cols)+j] * rhs;
 		}
 	}
 	return result;
@@ -254,57 +299,19 @@ Matrix<T> Matrix<T>::operator*(const T& rhs) {
 // Scalar Division
 template<typename T>
 Matrix<T> Matrix<T>::operator/(const T& rhs) {
-	Matrix<T> result = Matrix(this->m_rows, this->m_cols, 0.0);
+	Matrix<T> result = Matrix(this->m_rows, this->m_cols);
 
 	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result(i,j) = this->mat[i][j] / rhs;
+		for (unsigned j=0; j < this->m_cols; j++) {
+			result(i,j) = this->mat[i*(this->m_cols)+j] / rhs;
 		}
 	}
 
 	return result;
 }
 
-// Multiply matrix with vector
-template<typename T>
-std::vector<T> Matrix<T>::operator*(const std::vector<T>& rhs) {
-	if (this->m_cols != rhs.size()) {
-		throw MatrixException(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Error: Matrix columns and vector size must be equal for multiplication");
-	}
-	std::vector<T> result(this->m_rows, 0.0);
 
-	for (unsigned i=0; i < this->m_rows; i++) {
-		for (unsigned j=0; this->m_cols; j++) {
-			result[i] = this->mat[i][j] * rhs[j];
-		}
-	}
 
-	return result;
-}
-
-// Obtain a vector of the diagonal elements
-template<typename T>
-std::vector<T> Matrix<T>::diagVec() {
-	std::vector<T> result(this->m_rows, 0.0);
-
-	for (unsigned i=0; i < this->m_rows; i++) {
-		result[i] = this->mat[i][i];
-	}
-
-	return result;
-}
-
-// Access the individual elements
-template<typename T>
-T& Matrix<T>::operator()(const unsigned& row, const unsigned& col) {
-	return this->mat[row][col];
-}
-
-// Access the individual elements (const)
-template<typename T>
-const T& Matrix<T>::operator()(const unsigned& row, const unsigned& col) const {
-	return this->mat[row][col];
-}
 
 // Get number of rows of the matrix
 template<typename T>

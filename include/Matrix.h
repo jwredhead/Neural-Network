@@ -8,19 +8,23 @@
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
-#include <vector>
 #include <ostream>
 
 
 template < typename T> class Matrix {
 public:
 
-	Matrix(unsigned rows, unsigned columns, const T& initial);	// Constructor for defining Matrix with n rows, m columns
-	Matrix(unsigned rows, const T& initial); 						// Constructor for defining square Matrix with n rows, n columns
+	Matrix(unsigned rows, unsigned columns);	// Constructor for defining Matrix with n rows, m columns
+	Matrix(unsigned rows);						// Constructor for defining square Matrix with n rows, n columns
+	Matrix();									// Constructor for Null Matrix
 
 	virtual ~Matrix(); 							// Destructor
 	Matrix& operator=(const Matrix<T> &rhs); 	// Assign Constructor
 	Matrix(const Matrix<T> &rhs); 			// Copy Constructor
+
+	// Member access operations
+	T& operator()(const unsigned& row, const unsigned& col);
+	const T& operator()(const unsigned& row, const unsigned& col) const;
 
 	// Matrix Operations
 	Matrix<T> operator+(const Matrix<T>& rhs);
@@ -31,21 +35,13 @@ public:
 	Matrix<T> operator*=(const Matrix<T>& rhs);
 	Matrix<T> hadamardProduct(const Matrix<T>& rhs);
 	Matrix<T> transpose();
-
+	Matrix<T> fill(T val);
 
 	// Scalar Operations
 	Matrix<T> operator+(const T& rhs);
 	Matrix<T> operator-(const T& rhs);
 	Matrix<T> operator*(const T& rhs);
 	Matrix<T> operator/(const T& rhs);
-
-	// Vector Operations
-	std::vector<T> operator*(const std::vector<T>& rhs);
-	std::vector<T> diagVec();
-
-	// Member access operations
-	T& operator()(const unsigned& row, const unsigned& col);
-	const T& operator()(const unsigned& row, const unsigned& col) const;
 
 	unsigned getRows() const;
 	unsigned getCols() const;
@@ -55,7 +51,7 @@ private:
 	unsigned long long m_size;
 	unsigned m_rows;
 	unsigned m_cols;
-	std::vector< std::vector<T> > mat;
+	T* mat;
 
 };
 

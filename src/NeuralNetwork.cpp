@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
 	unsigned rows = 3;
 	unsigned columns = 4;
 
-	Matrix<int> test(rows, columns, 0.0);
+	Matrix<int> test(rows, columns);
 
 	for ( unsigned i=0; i < rows; i++ ) {
 		for (unsigned j=0; j < columns; j++) {

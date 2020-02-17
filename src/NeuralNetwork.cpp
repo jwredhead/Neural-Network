@@ -30,29 +30,29 @@ NeuralNetwork::NeuralNetwork(int inputNodes, int hiddenNodes, int outputNodes) {
 
 	// Only 1 hidden layer so m_hiddenWeights stays empty
 	if (!m_hiddenWeights.empty()) {
-		m_hiddenWeights.clear;
+		m_hiddenWeights.clear();
 	}
 
 	// Set Weight matrices elements to random number between -1 and 1
 	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
 		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			m_inWeights(i,j) = dist(mt);
+			(*m_inWeights)(i,j) = dist(mt);
 		}
 	}
 
 	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
 		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			m_outWeights(i,j) = dist(mt);
+			(*m_outWeights)(i,j) = dist(mt);
 		}
 	}
 
 	// Set Bias matrices elements to random number between -1 and 1
 	for(unsigned i = 0; i < m_inBias->getSize(); i++) {
-		m_inBias(i,0) = dist(mt);
+		(*m_inBias)(i,0) = dist(mt);
 	}
 
 	for(unsigned i = 0; i < m_outBias->getSize(); i++) {
-		m_outBias(i,0) = dist(mt);
+		(*m_outBias)(i,0) = dist(mt);
 	}
 
 }
@@ -74,7 +74,7 @@ NeuralNetwork::NeuralNetwork(int inputNodes, int *hiddenNodes, int hiddenLayers,
 	m_outWeights = new Matrix<float>(outputNodes,hiddenNodes[hiddenLayers-1]);
 	m_outBias = new Matrix<float>(outputNodes,1);
 	if (!m_hiddenWeights.empty()) {
-		m_hiddenWeights.clear;
+		m_hiddenWeights.clear();
 	}
 	if (hiddenLayers > 1) {
 		Matrix<float>* temp;
@@ -84,7 +84,7 @@ NeuralNetwork::NeuralNetwork(int inputNodes, int *hiddenNodes, int hiddenLayers,
 		}
 	}
 	if (!m_hiddenBias.empty()) {
-		m_hiddenBias.clear;
+		m_hiddenBias.clear();
 	}
 	if (hiddenLayers > 1) {
 		Matrix<float>* temp;
@@ -97,36 +97,36 @@ NeuralNetwork::NeuralNetwork(int inputNodes, int *hiddenNodes, int hiddenLayers,
 	// Set Weight matrices elements to random number between -1 and 1
 	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
 		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			m_inWeights(i,j) = dist(mt);
+			(*m_inWeights)(i,j) = dist(mt);
 		}
 	}
 
 	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
 		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			m_outWeights(i,j) = dist(mt);
+			(*m_outWeights)(i,j) = dist(mt);
 		}
 	}
 
 	for ( auto i : m_hiddenWeights) {
-		for (unsigned j=0; j < m_hiddenWeights[i].getRows(); j++) {
-			for(unsigned k=0; k < m_hiddenWeights[i].getCols(); k++ ) {
-				m_hiddenWeights[i](j,k) = dist(mt);
+		for (unsigned j=0; j < i->getRows(); j++) {
+			for(unsigned k=0; k < i->getCols(); k++ ) {
+				(*i)(j,k) = dist(mt);
 			}
 		}
 	}
 
 	// Set Bias matrices elements to random number between -1 and 1
 	for(unsigned i = 0; i < m_inBias->getSize(); i++) {
-		m_inBias(i,0) = dist(mt);
+		(*m_inBias)(i,0) = dist(mt);
 	}
 
 	for(unsigned i = 0; i < m_outBias->getSize(); i++) {
-		m_outBias(i,0) = dist(mt);
+		(*m_outBias)(i,0) = dist(mt);
 	}
 
 	for(auto i : m_hiddenBias) {
-		for (unsigned j=0; j < m_hiddenBias[i].getSize(); j++) {
-			m_hiddenBias[i](j,0) = dist(mt);
+		for (unsigned j=0; j < i->getSize(); j++) {
+			(*i)(j,0) = dist(mt);
 		}
 	}
 
@@ -145,10 +145,10 @@ NeuralNetwork::~NeuralNetwork() {
 		m_outWeights = nullptr;
 	}
 	if (!m_hiddenWeights.empty()) {
-		for (int i=0; i<m_hiddenWeights.size; i++) {
+		for (int i=0; i<m_hiddenWeights.size(); i++) {
 			delete m_hiddenWeights[i];
 		}
-		m_hiddenWeights.clear;
+		m_hiddenWeights.clear();
 	}
 
 	// De-allocate memory for Bias matrices
@@ -161,10 +161,10 @@ NeuralNetwork::~NeuralNetwork() {
 		m_outBias = nullptr;
 	}
 	if (!m_hiddenBias.empty()) {
-		for (int i=0; i<m_hiddenBias.size; i++) {
+		for (int i=0; i<m_hiddenBias.size(); i++) {
 			delete m_hiddenBias[i];
 		}
-		m_hiddenBias.clear;
+		m_hiddenBias.clear();
 	}
 
 }
@@ -177,6 +177,7 @@ Activation_Function NeuralNetwork::getActivation() {
 	return m_activation;
 }
 
+//TODO Finish Feed Forward
 void NeuralNetwork::feedForward(float* inputs, unsigned size) {
 
 	float in[size+1] = {1};

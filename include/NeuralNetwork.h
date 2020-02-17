@@ -36,7 +36,7 @@ private:
 	Matrix<float>* m_inWeights;
 	Matrix<float>* m_inBias;
 	Matrix<float>* m_outWeights;
-	Matrix<float>* m_outBias
+	Matrix<float>* m_outBias;
 	std::vector<Matrix<float>*> m_hiddenWeights;
 	std::vector<Matrix<float>*> m_hiddenBias;
 

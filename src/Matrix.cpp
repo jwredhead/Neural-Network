@@ -35,6 +35,20 @@ Matrix<T>::Matrix() : m_rows(0), m_cols(0), m_size(0) {
 	mat = nullptr;
 }
 
+// Array Constructor - Converts array into matrix
+template<typename T>
+Matrix<T>::Matrix(T* arr, unsigned size) {
+	m_cols = 1;
+	m_rows = size;
+	m_size = size;
+
+	mat = new T(m_size);
+	for (unsigned i=0; i < m_size; i++) {
+		mat[i] = arr[i];
+	}
+
+}
+
 // Virtual Destructor, set to default
 template<typename T>
 Matrix<T>::~Matrix() {
@@ -309,9 +323,6 @@ Matrix<T> Matrix<T>::operator/(const T& rhs) {
 
 	return result;
 }
-
-
-
 
 // Get number of rows of the matrix
 template<typename T>

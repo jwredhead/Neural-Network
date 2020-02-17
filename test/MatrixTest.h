@@ -6,6 +6,7 @@
  */
 
 #include <iostream>
+#include <array>
 #include <gtest/gtest.h>
 #include <Matrix.h>
 #include <MatrixException.h>
@@ -47,6 +48,33 @@ TEST(MatrixTest, squareConstructorTest) {
 			EXPECT_EQ(0, result);
 		}
 	}
+}
+
+TEST(MatrixTest, arrayConstructorTest) {
+
+	int A[5] = {0};
+	A[1] = 1;
+	A[2] = 2;
+	A[3] = 3;
+	A[4] = 4;
+
+
+	Matrix<int> temp(A, 5);
+
+	EXPECT_EQ(5, temp.getRows());
+	EXPECT_EQ(1, temp.getCols());
+	EXPECT_EQ(5, temp.getSize());
+	int result = temp(0,0);
+	EXPECT_EQ(0, result);
+	result = temp(0,1);
+	EXPECT_EQ(1, result);
+	result = temp(0,2);
+	EXPECT_EQ(2, result);
+	result = temp(0,3);
+	EXPECT_EQ(3, result);
+	result = temp(0,4);
+	EXPECT_EQ(4, result);
+
 }
 
 TEST(MatrixTest, assignConstructorTest) {

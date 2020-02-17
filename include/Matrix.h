@@ -9,6 +9,7 @@
 #define MATRIX_H_
 
 #include <ostream>
+#include <array>
 
 
 template < typename T> class Matrix {
@@ -17,6 +18,7 @@ public:
 	Matrix(unsigned rows, unsigned columns);	// Constructor for defining Matrix with n rows, m columns
 	Matrix(unsigned rows);						// Constructor for defining square Matrix with n rows, n columns
 	Matrix();									// Constructor for Null Matrix
+	Matrix(T* arr, unsigned size);				// Construct Matrix from array input
 
 	virtual ~Matrix(); 							// Destructor
 	Matrix& operator=(const Matrix<T> &rhs); 	// Assign Constructor
@@ -57,7 +59,7 @@ private:
 
 // Ostream Operator
 template<typename U>
-inline std::ostream& operator<<(std::ostream&os, const Matrix<U>& matrix) {
+inline std::ostream& operator<<(std::ostream& os, const Matrix<U>& matrix) {
 
 	unsigned rows = matrix.getRows();
 	unsigned cols = matrix.getCols();

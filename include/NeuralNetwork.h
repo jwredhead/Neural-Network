@@ -29,7 +29,9 @@ public:
 	void setActivation(Activation_Function funct);
 	Activation_Function getActivation();
 
-	void feedForward(float* inputs, unsigned size);
+	Matrix<float> feedForward(float* inputs);
+
+	void trainNetwork(float* inputs, float* targets);
 
 private:
 	Activation_Function m_activation;
@@ -40,10 +42,18 @@ private:
 	std::vector<Matrix<float>*> m_hiddenWeights;
 	std::vector<Matrix<float>*> m_hiddenBias;
 
+	int m_inputNodes;
+	int m_outputNodes;
+	int* m_hiddenNodes;
+	int m_hiddenLayers;
+
+	const float learningRate = 0.1;
+
 	// Activation Functions not defined in cmath
 	float sigmoid (float x);
 	float bi_sigmoid(float x);
 
+	Matrix<float> runActivationFunction(Matrix<float> m);
 };
 
 // Ostream Operator

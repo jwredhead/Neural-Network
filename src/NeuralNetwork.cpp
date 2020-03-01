@@ -8,173 +8,39 @@
 #include "NeuralNetwork.h"
 #include <string.h>
 #include <math.h>
-#include <random>
 
 
 
-NeuralNetwork::NeuralNetwork(int inputNodes, int hiddenNodes, int outputNodes) :
-							m_inputNodes(inputNodes),
-							m_outputNodes(outputNodes),
-							m_hiddenLayers(1) {
-
-	// SEED Random Number Generator
-	std::random_device rd;
-	std::mt19937 mt(rd());
-	std::uniform_real_distribution<float> dist(-1.0, 1.0);
+NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned hiddenNodes, unsigned outputNodes) {
 
 	// Initialize Activation function, default = tanh function
 	m_activation = Activation_Function::TANH;
 
-	// Allocate Memory for Weights and Bias Matrices
-	m_inWeights = new Matrix<float>(hiddenNodes,inputNodes);
-	m_inBias = new Matrix<float>(hiddenNodes,1);
-	m_outWeights = new Matrix<float>(outputNodes,hiddenNodes);
-	m_outBias = new Matrix<float>(outputNodes,1);
+	m_inputLayer.Nodes = inputNodes;
+	m_outputLayer.Nodes = outputNodes;
+	NN_Layer hiddenLayer;
+	hiddenLayer.Nodes = hiddenNodes;
+	m_hiddenLayers.insert(m_hiddenLayers.begin(), hiddenLayer);
 
-	m_hiddenNodes[0] = hiddenNodes;
-
-	// Only 1 hidden layer so m_hiddenWeights stays empty
-	if (!m_hiddenWeights.empty()) {
-		m_hiddenWeights.clear();
-	}
-
-	// Set Weight matrices elements to random number between -1 and 1
-	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
-		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			(*m_inWeights)(i,j) = dist(mt);
-		}
-	}
-
-	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
-		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			(*m_outWeights)(i,j) = dist(mt);
-		}
-	}
-
-	// Set Bias matrices elements to random number between -1 and 1
-	for(unsigned i = 0; i < m_inBias->getSize(); i++) {
-		(*m_inBias)(i,0) = dist(mt);
-	}
-
-	for(unsigned i = 0; i < m_outBias->getSize(); i++) {
-		(*m_outBias)(i,0) = dist(mt);
-	}
+	initialize();
 
 }
 
-NeuralNetwork::NeuralNetwork(int inputNodes, int *hiddenNodes, int hiddenLayers, int outputNodes) :
-									m_inputNodes(inputNodes),
-									m_hiddenNodes(hiddenNodes),
-									m_hiddenLayers(hiddenLayers),
-									m_outputNodes(outputNodes) {
-
-	// SEED Random Number Generator
-	std::random_device rd;
-	std::mt19937 mt(rd());
-	std::uniform_real_distribution<float> dist(-1.0, 1.0);
+NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned *hiddenNodes, unsigned hiddenLayers, unsigned outputNodes) {
 
 	// Initialize Activation function, default = tanh function
 	m_activation = Activation_Function::TANH;
 
+	m_inputLayer.Nodes = inputNodes;
+	m_outputLayer.Nodes = outputNodes;
 
-	// Allocate Memory for Weights and Bias Matrices
-	m_inWeights = new Matrix<float>(hiddenNodes[0],inputNodes);
-	m_inBias = new Matrix<float>(hiddenNodes[0],1);
-	m_outWeights = new Matrix<float>(outputNodes,hiddenNodes[hiddenLayers-1]);
-	m_outBias = new Matrix<float>(outputNodes,1);
-	if (!m_hiddenWeights.empty()) {
-		m_hiddenWeights.clear();
-	}
-	if (hiddenLayers > 1) {
-		Matrix<float>* temp;
-		for (int i=1; i<hiddenLayers; i++) {
-			temp = new Matrix<float>(hiddenNodes[i], hiddenNodes[i-1]);
-			m_hiddenWeights.push_back(temp);
-		}
-	}
-	if (!m_hiddenBias.empty()) {
-		m_hiddenBias.clear();
-	}
-	if (hiddenLayers > 1) {
-		Matrix<float>* temp;
-		for (int i=1; i<hiddenLayers; i++) {
-			temp = new Matrix<float>(hiddenNodes[i], 1);
-			m_hiddenBias.push_back(temp);
-		}
+	for (int i=0; i<hiddenLayers; i++) {
+		NN_Layer hiddenLayer;
+		hiddenLayer.Nodes = hiddenNodes[i];
+		m_hiddenLayers.push_back(hiddenLayer);
 	}
 
-	// Set Weight matrices elements to random number between -1 and 1
-	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
-		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			(*m_inWeights)(i,j) = dist(mt);
-		}
-	}
-
-	for (unsigned i=0; i < m_inWeights->getRows(); i++) {
-		for(unsigned j=0; j < m_inWeights->getCols(); j++ ) {
-			(*m_outWeights)(i,j) = dist(mt);
-		}
-	}
-
-	for ( auto i : m_hiddenWeights) {
-		for (unsigned j=0; j < i->getRows(); j++) {
-			for(unsigned k=0; k < i->getCols(); k++ ) {
-				(*i)(j,k) = dist(mt);
-			}
-		}
-	}
-
-	// Set Bias matrices elements to random number between -1 and 1
-	for(unsigned i = 0; i < m_inBias->getSize(); i++) {
-		(*m_inBias)(i,0) = dist(mt);
-	}
-
-	for(unsigned i = 0; i < m_outBias->getSize(); i++) {
-		(*m_outBias)(i,0) = dist(mt);
-	}
-
-	for(auto i : m_hiddenBias) {
-		for (unsigned j=0; j < i->getSize(); j++) {
-			(*i)(j,0) = dist(mt);
-		}
-	}
-
-
-}
-
-NeuralNetwork::~NeuralNetwork() {
-
-	// De-allocate memory for Weight matrices
-	if (m_inWeights != nullptr) {
-		delete m_inWeights;
-		m_inWeights = nullptr;
-	}
-	if (m_outWeights) {
-		delete m_outWeights;
-		m_outWeights = nullptr;
-	}
-	if (!m_hiddenWeights.empty()) {
-		for (int i=0; i<m_hiddenWeights.size(); i++) {
-			delete m_hiddenWeights[i];
-		}
-		m_hiddenWeights.clear();
-	}
-
-	// De-allocate memory for Bias matrices
-	if (m_inBias != nullptr) {
-		delete m_inBias;
-		m_inWeights = nullptr;
-	}
-	if (m_outBias) {
-		delete m_outBias;
-		m_outBias = nullptr;
-	}
-	if (!m_hiddenBias.empty()) {
-		for (int i=0; i<m_hiddenBias.size(); i++) {
-			delete m_hiddenBias[i];
-		}
-		m_hiddenBias.clear();
-	}
+	initialize();
 
 }
 
@@ -187,50 +53,51 @@ Activation_Function NeuralNetwork::getActivation() {
 }
 
 
-Matrix<float> NeuralNetwork::feedForward(float* inputs) {
+void NeuralNetwork::feedForward(float* inputs) {
 
-	Matrix<float> matInputs(inputs, m_inputNodes);
+	for (unsigned i=0; i < m_inputLayer.Nodes; i++) {
+		m_inputLayer.inputs(i,0) = inputs[i];
+	}
 
-	Matrix<float> hidden = (*m_inWeights) * matInputs;
-	hidden += (*m_inBias);
-	hidden = runActivationFunction(hidden);
+	m_hiddenLayers.front().output = m_hiddenLayers.front().weights * m_inputLayer.inputs;
+	m_hiddenLayers.front().output += (m_hiddenLayers.front().bias);
+	m_hiddenLayers.front().output = runActivationFunction(m_hiddenLayers.front().output);
 
-	if(!m_hiddenWeights.empty()) {
-
-		for (unsigned i=0; i<m_hiddenWeights.size(); i++) {
-			hidden = (*(m_hiddenWeights[i])) * hidden;
-			hidden += (*(m_hiddenBias[i]));
+	if (m_hiddenLayers.size() > 1) {
+		for (unsigned i=0; i < m_hiddenLayers.size(); i++) {
+			m_hiddenLayers[i].output = m_hiddenLayers[i].weights * m_hiddenLayers[i].output;
+			m_hiddenLayers[i].output += m_hiddenLayers[i].bias;
+			m_hiddenLayers[i].output = runActivationFunction(m_hiddenLayers[i].output);
 		}
 	}
 
-	Matrix<float> output = (*m_outWeights) * hidden;
-	output += (*m_outBias);
-	output = runActivationFunction(output);
-
-	return output;
+	m_outputLayer.output = m_outputLayer.weights * m_hiddenLayers.back().output;
+	m_outputLayer.output += m_outputLayer.bias;
+	m_outputLayer.output = runActivationFunction(m_outputLayer.output);
 }
 
 void NeuralNetwork::trainNetwork(float *inputs, float *targets) {
 
-	Matrix<float> guesses = feedForward(inputs);
+	feedForward(inputs);
 
-	Matrix<float> matTargets(targets, m_outputNodes);
+	Matrix<float> matTargets(targets, m_outputLayer.Nodes);
 
-	Matrix<float> outErrors = matTargets - guesses;
+	m_outputLayer.error = matTargets - m_outputLayer.output;
 
-	std::vector<Matrix<float>*> hiddenErrors;
+	m_hiddenLayers.back().error = m_outputLayer.weights.transpose() * m_outputLayer.error;
 
-	Matrix<float> lastHiddenError = (*m_outWeights).transpose() * outErrors;
-
-	hiddenErrors.insert(hiddenErrors.begin(), &lastHiddenError);
-
-	if (!m_hiddenWeights.empty()) {
-		for ( auto i : m_hiddenWeights) {
-			Matrix <float> hiddenError_i = i->transpose() * *(hiddenErrors.front());
-			hiddenErrors.insert(hiddenErrors.begin(), &hiddenError_i);
-		}
+	for (unsigned i=(m_hiddenLayers.size()-2); i > -1; i--) {
+		m_hiddenLayers[i].error = m_hiddenLayers[i+1].weights.transpose() * m_hiddenLayers[i+1].error;
 	}
 
+}
+
+float NeuralNetwork::sigmoid(float x) {
+	return 1 / (1 + exp(-x));
+}
+
+float NeuralNetwork::bi_sigmoid(float x) {
+	return (1 - exp(-x) / (1 + exp(-x)));
 }
 
 Matrix<float> NeuralNetwork::runActivationFunction(Matrix<float> m) {
@@ -248,12 +115,81 @@ Matrix<float> NeuralNetwork::runActivationFunction(Matrix<float> m) {
 	return m;
 }
 
+void NeuralNetwork::initialize() {
 
-float NeuralNetwork::sigmoid(float x) {
-	return 1 / (1 + exp(-x));
+	// SEED Random Number Generator
+	std::random_device rd;
+	std::mt19937 mt(rd());
+	std::uniform_real_distribution<float> dist(-1.0, 1.0);
+
+	// Intialize Input layer with null input
+	Matrix<float> x(m_inputLayer.Nodes, 1);
+	x.fill(0.0);
+	m_inputLayer.inputs = x;
+
+	// Initialize output layer with random weights, random bias, null output, and null error
+	Matrix<float> randOutWeights(m_outputLayer.Nodes, m_hiddenLayers.back().Nodes);
+	randomFill(dist, mt, &randOutWeights);
+	m_outputLayer.weights = randOutWeights;
+
+	Matrix<float> randOutBias(m_outputLayer.Nodes, 1);
+	randomFill(dist, mt, &randOutBias);
+	m_outputLayer.bias = randOutBias;
+
+	Matrix<float> nullOutput(m_outputLayer.Nodes, 1);
+	nullOutput.fill(0.0);
+	m_outputLayer.output = nullOutput;
+
+	Matrix<float> nullOutErr(m_outputLayer.Nodes, 1);
+	nullOutErr.fill(0.0);
+	m_outputLayer.error = nullOutErr;
+
+	// Initialize first hidden layer with random weights, random bias, null output, and null error
+	Matrix<float> randInWeights(m_hiddenLayers.front().Nodes, m_inputLayer.Nodes);
+	randomFill(dist, mt, &randInWeights);
+	m_hiddenLayers.front().weights = randInWeights;
+
+	Matrix<float> randInBias(m_hiddenLayers.front().Nodes, 1);
+	randomFill(dist, mt, &randInBias);
+	m_hiddenLayers.front().bias = randInBias;
+
+	Matrix<float> nullHdnOut(m_hiddenLayers.front().Nodes, 1);
+	nullHdnOut.fill(0.0);
+	m_hiddenLayers.front().output = nullHdnOut;
+
+	Matrix<float> nullHdnErr(m_hiddenLayers.front().Nodes, 1);
+	nullHdnErr.fill(0.0);
+	m_outputLayer.error = nullHdnErr;
+
+	// If more hidden layers exist, initialize all hidden layers with random wieghts, reandom bias, null output, and null error
+	if (m_hiddenLayers.size() >1) {
+		for (unsigned i=1; i<m_hiddenLayers.size(); i++) {
+			Matrix<float> randHdnWeights(m_hiddenLayers[i].Nodes, m_hiddenLayers[i-1].Nodes);
+			randomFill(dist, mt, &randHdnWeights);
+			m_hiddenLayers[i].weights = randHdnWeights;
+
+			Matrix<float> randHdnBias(m_hiddenLayers[i].Nodes, 1);
+			randomFill(dist, mt, &randHdnBias);
+			m_hiddenLayers[i].bias = randHdnBias;
+
+			Matrix<float> nullHdn(m_hiddenLayers[i].Nodes, 1);
+			nullHdn.fill(0.0);
+			m_hiddenLayers[i].output = nullHdn;
+
+			Matrix<float> nullHdnErr(m_hiddenLayers[i].Nodes, 1);
+			nullHdnErr.fill(0.0);
+			m_outputLayer.error = nullHdnErr;
+		}
+	}
+
 }
 
-float NeuralNetwork::bi_sigmoid(float x) {
-	return (1 - exp(-x) / (1 + exp(-x)));
+void NeuralNetwork::randomFill(std::uniform_real_distribution<float> dist, std::mt19937 mt, Matrix<float>* m) {
+
+	for (unsigned i=0; i < m->getRows(); i++) {
+		for (unsigned j=0; j < m->getCols(); j++) {
+			(*m)(i,j) = dist(mt);
+		}
+	}
 }
 

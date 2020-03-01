@@ -5,8 +5,7 @@
  *      Author: jwredhead
  */
 
-#ifndef MATRIXEXCEPTION_H_
-#define MATRIXEXCEPTION_H_
+#pragma once
 
 #include <iostream>
 #include <exception>
@@ -36,5 +35,3 @@ private:
 	const char* info;
 
 };
-
-#endif /* MATRIXEXCEPTION_H_ */

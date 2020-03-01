@@ -4,9 +4,7 @@
  *  Created on: Feb 8, 2020
  *      Author: jwredhead
  */
-
-#ifndef MATRIX_H_
-#define MATRIX_H_
+#pragma once
 
 #include <ostream>
 #include <array>
@@ -80,8 +78,3 @@ inline std::ostream& operator<<(std::ostream& os, const Matrix<U>& matrix) {
 	return os;
 }
 
-//#include "Matrix.cpp" // Required for template class, compiler need implementation within same file
-
-
-
-#endif /* MATRIX_H_ */

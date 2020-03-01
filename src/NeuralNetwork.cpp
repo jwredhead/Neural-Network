@@ -13,9 +13,6 @@
 
 NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned hiddenNodes, unsigned outputNodes) {
 
-	// Initialize Activation function, default = tanh function
-	m_activation = Activation_Function::TANH;
-
 	m_inputLayer.Nodes = inputNodes;
 	m_outputLayer.Nodes = outputNodes;
 	NN_Layer hiddenLayer;
@@ -27,9 +24,6 @@ NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned hiddenNodes, unsigned
 }
 
 NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned *hiddenNodes, unsigned hiddenLayers, unsigned outputNodes) {
-
-	// Initialize Activation function, default = tanh function
-	m_activation = Activation_Function::TANH;
 
 	m_inputLayer.Nodes = inputNodes;
 	m_outputLayer.Nodes = outputNodes;
@@ -44,36 +38,21 @@ NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned *hiddenNodes, unsigne
 
 }
 
- void NeuralNetwork::setActivation(Activation_Function funct) {
+ void NeuralNetwork::setActivationFunction(Activation_Function funct) {
 	m_activation =  funct;
 }
 
-Activation_Function NeuralNetwork::getActivation() {
+Activation_Function NeuralNetwork::getActivationFunction() {
 	return m_activation;
 }
 
 
-void NeuralNetwork::feedForward(float* inputs) {
+void NeuralNetwork::setLearningRate(float lr) {
+	m_learningRate = lr;
+}
 
-	for (unsigned i=0; i < m_inputLayer.Nodes; i++) {
-		m_inputLayer.inputs(i,0) = inputs[i];
-	}
-
-	m_hiddenLayers.front().output = m_hiddenLayers.front().weights * m_inputLayer.inputs;
-	m_hiddenLayers.front().output += (m_hiddenLayers.front().bias);
-	m_hiddenLayers.front().output = runActivationFunction(m_hiddenLayers.front().output);
-
-	if (m_hiddenLayers.size() > 1) {
-		for (unsigned i=0; i < m_hiddenLayers.size(); i++) {
-			m_hiddenLayers[i].output = m_hiddenLayers[i].weights * m_hiddenLayers[i].output;
-			m_hiddenLayers[i].output += m_hiddenLayers[i].bias;
-			m_hiddenLayers[i].output = runActivationFunction(m_hiddenLayers[i].output);
-		}
-	}
-
-	m_outputLayer.output = m_outputLayer.weights * m_hiddenLayers.back().output;
-	m_outputLayer.output += m_outputLayer.bias;
-	m_outputLayer.output = runActivationFunction(m_outputLayer.output);
+float NeuralNetwork::getLearningRate() {
+	return m_learningRate;
 }
 
 void NeuralNetwork::trainNetwork(float *inputs, float *targets) {
@@ -90,6 +69,25 @@ void NeuralNetwork::trainNetwork(float *inputs, float *targets) {
 		m_hiddenLayers[i].error = m_hiddenLayers[i+1].weights.transpose() * m_hiddenLayers[i+1].error;
 	}
 
+	Matrix<float> gradients = calcGradient(m_outputLayer);
+	Matrix<float> deltaWeight = gradients * m_hiddenLayers.back().output.transpose();
+	m_outputLayer.weights = m_outputLayer.weights + deltaWeight;
+	m_outputLayer.bias += gradients;
+
+	gradients = calcGradient(m_hiddenLayers.front());
+	deltaWeight = gradients * m_inputLayer.inputs.transpose();
+	m_hiddenLayers.front().weights = m_hiddenLayers.front().weights + deltaWeight;
+	m_hiddenLayers.front().bias += gradients;
+
+	if (m_hiddenLayers.size() > 1) {
+		for (unsigned i=1; i < m_hiddenLayers.size(); i++) {
+			gradients = calcGradient(m_hiddenLayers[i]);
+			deltaWeight = gradients * m_hiddenLayers[i-1].output.transpose();
+			m_hiddenLayers[i].weights = m_hiddenLayers[i].weights + deltaWeight;
+			m_hiddenLayers[i].bias += gradients;
+		}
+	}
+
 }
 
 float NeuralNetwork::sigmoid(float x) {
@@ -98,21 +96,6 @@ float NeuralNetwork::sigmoid(float x) {
 
 float NeuralNetwork::bi_sigmoid(float x) {
 	return (1 - exp(-x) / (1 + exp(-x)));
-}
-
-Matrix<float> NeuralNetwork::runActivationFunction(Matrix<float> m) {
-
-	for (int i=0; i< m.getRows(); i++) {
-		for (int j=0; j< m.getCols(); j++) {
-			switch (m_activation) {
-				case Activation_Function::SIGMOID: 		m(i,j) = sigmoid(m(i,j)); break;
-				case Activation_Function::BI_SIGMOID: 	m(i,j) = bi_sigmoid(m(i,j)); break;
-				case Activation_Function::TANH: 		m(i,j) = tanh(m(i,j)); break;
-			}
-		}
-	}
-
-	return m;
 }
 
 void NeuralNetwork::initialize() {
@@ -161,7 +144,7 @@ void NeuralNetwork::initialize() {
 	nullHdnErr.fill(0.0);
 	m_outputLayer.error = nullHdnErr;
 
-	// If more hidden layers exist, initialize all hidden layers with random wieghts, reandom bias, null output, and null error
+	// If more hidden layers exist, initialize all hidden layers with random weights, random bias, null output, and null error
 	if (m_hiddenLayers.size() >1) {
 		for (unsigned i=1; i<m_hiddenLayers.size(); i++) {
 			Matrix<float> randHdnWeights(m_hiddenLayers[i].Nodes, m_hiddenLayers[i-1].Nodes);
@@ -184,6 +167,29 @@ void NeuralNetwork::initialize() {
 
 }
 
+void NeuralNetwork::feedForward(float* inputs) {
+
+	for (unsigned i=0; i < m_inputLayer.Nodes; i++) {
+		m_inputLayer.inputs(i,0) = inputs[i];
+	}
+
+	m_hiddenLayers.front().output = m_hiddenLayers.front().weights * m_inputLayer.inputs;
+	m_hiddenLayers.front().output += (m_hiddenLayers.front().bias);
+	m_hiddenLayers.front().output = runActivationFunction(m_hiddenLayers.front().output);
+
+	if (m_hiddenLayers.size() > 1) {
+		for (unsigned i=0; i < m_hiddenLayers.size(); i++) {
+			m_hiddenLayers[i].output = m_hiddenLayers[i].weights * m_hiddenLayers[i].output;
+			m_hiddenLayers[i].output += m_hiddenLayers[i].bias;
+			m_hiddenLayers[i].output = runActivationFunction(m_hiddenLayers[i].output);
+		}
+	}
+
+	m_outputLayer.output = m_outputLayer.weights * m_hiddenLayers.back().output;
+	m_outputLayer.output += m_outputLayer.bias;
+	m_outputLayer.output = runActivationFunction(m_outputLayer.output);
+}
+
 void NeuralNetwork::randomFill(std::uniform_real_distribution<float> dist, std::mt19937 mt, Matrix<float>* m) {
 
 	for (unsigned i=0; i < m->getRows(); i++) {
@@ -191,5 +197,39 @@ void NeuralNetwork::randomFill(std::uniform_real_distribution<float> dist, std::
 			(*m)(i,j) = dist(mt);
 		}
 	}
+}
+
+Matrix<float> NeuralNetwork::runActivationFunction(const Matrix<float>& m) {
+
+	Matrix<float> n(m.getRows(), m.getCols());
+	for (unsigned i=0; i< m.getRows(); i++) {
+		for (unsigned j=0; j< m.getCols(); j++) {
+			switch (m_activation) {
+				case Activation_Function::SIGMOID: 		n(i,j) = sigmoid(m(i,j)); break;
+				case Activation_Function::BI_SIGMOID: 	n(i,j) = bi_sigmoid(m(i,j)); break;
+				case Activation_Function::TANH: 		n(i,j) = tanh(m(i,j)); break;
+			}
+		}
+	}
+
+	return n;
+}
+
+Matrix<float> NeuralNetwork::calcGradient(const NN_Layer& l) {
+
+	Matrix<float> n(l.output.getRows(), l.output.getCols());
+	for (unsigned i=0; i< l.output.getRows(); i++) {
+		for (unsigned j=0; j< l.output.getCols(); j++) {
+			switch (m_activation) {
+				case Activation_Function::SIGMOID: 		n(i,j) = l.output(i,j) * (1 - l.output(i,j)); break;
+				case Activation_Function::BI_SIGMOID: 	n(i,j) = 2 * l.output(i,j) * (1 - l.output(i,j)) ;break;
+				case Activation_Function::TANH: 		n(i,j) = 1 - ( l.output(i,j) * l.output(i,j) );break;
+			}
+		}
+	}
+	n = n.hadamardProduct(l.error);
+	n = n * m_learningRate;
+
+	return n;
 }
 

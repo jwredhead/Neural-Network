@@ -11,8 +11,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 enable_testing()
 
 set(Headers
-	../include/Matrix.h
-	../include/MatrixException.h
+	Matrix.h
+	MatrixException.h
+	NeuralNetworkTypes.h
+	NeuralNetwork.h
 )
 list(TRANSFORM Headers PREPEND "include/")
 

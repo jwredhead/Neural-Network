@@ -44,11 +44,11 @@ struct NN_Layer {
 // Ostream Operator for Neural Network Layer Struct
 inline std::ostream& operator<<(std::ostream& os, const NN_Layer l) {
 
-	os << INDENT << INDENT << "Nodes: " << l.Nodes << std::endl
-		<< INDENT << INDENT << "Weight Matrix" << l.weights << std::endl
-		<< INDENT << INDENT << "Bias Matrix" << l.bias << std::endl
-		<< INDENT << INDENT << "Output Matrix" << l.output << std::endl
-		<< INDENT << INDENT << "Error Matrix" << l.error << std::endl;
+	os << INDENT << INDENT << "Nodes: " << l.Nodes << '\n'
+		<< INDENT << INDENT << "Weight Matrix" << l.weights << '\n'
+		<< INDENT << INDENT << "Bias Matrix" << l.bias << '\n'
+		<< INDENT << INDENT << "Output Matrix" << l.output << '\n'
+		<< INDENT << INDENT << "Error Matrix" << l.error << '\n';
 	return os;
 }
 
@@ -60,8 +60,8 @@ struct IN_Layer {
 // Ostream Operator for Input Layer Struct
 inline std::ostream& operator<<(std::ostream& os, const IN_Layer l) {
 
-	os << INDENT << INDENT << "Nodes: " << l.Nodes << std::endl
-		<< INDENT << INDENT << "Input_Matrix" << l.inputs << std::endl;
+	os << INDENT << INDENT << "Nodes: " << l.Nodes << '\n'
+		<< INDENT << INDENT << "Input_Matrix" << l.inputs << '\n';
 	return os;
 }
 

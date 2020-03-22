@@ -63,16 +63,16 @@ inline std::ostream& operator<<(std::ostream& os, const Matrix<U>& matrix) {
 	unsigned cols = matrix.getCols();
 	unsigned size = matrix.getSize();
 
-	os << "Size: " << size << std::endl
-			<< "Rows: "<< rows << std::endl
-			<< "Columns: "<< cols << std::endl
-			<< "Matrix: " << std::endl;
+	os << "Size: " << size << '\n'
+			<< "Rows: "<< rows << '\n'
+			<< "Columns: "<< cols << '\n'
+			<< "Matrix: " << '\n';
 
 	for (unsigned i=0; i < rows; i++) {
 		for (unsigned j=0; j < cols; j++) {
 			os<< "\t" << matrix(i,j);
 		}
-		os << std::endl;
+		os << '\n';
 	}
 
 	return os;

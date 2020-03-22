@@ -90,6 +90,14 @@ void NeuralNetwork::trainNetwork(float *inputs, float *targets) {
 
 }
 
+void NeuralNetwork::predict(float* inputs, float* outputs) {
+	feedForward(inputs);
+	unsigned num_outputs =  m_outputLayer.output.getSize();
+	for ( unsigned i=0; i < num_outputs; ++i) {
+		outputs[i] = m_outputLayer.output(i,0);
+	}
+}
+
 float NeuralNetwork::sigmoid(float x) {
 	return 1 / (1 + exp(-x));
 }

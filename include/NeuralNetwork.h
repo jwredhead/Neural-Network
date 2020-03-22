@@ -28,6 +28,9 @@ public:
 
 	void trainNetwork(float* inputs, float* targets);
 
+	void predict(float* inputs, float* outputs);
+
+
 private:
 	IN_Layer m_inputLayer;
 	NN_Layer m_outputLayer;
@@ -58,18 +61,18 @@ private:
 // Ostream Operator
 inline std::ostream& operator<<(std::ostream& os, const NeuralNetwork nn) {
 
-	os << "*****Neural Network*****" << std::endl
-		<< "Learning Rate: " << nn.m_learningRate << std::endl
-		<< "Activation Function: " << nn.m_activation << std::endl
-		<< "Layers: " << (nn.m_hiddenLayers.size() + 2) << std::endl
-		<< INDENT << "Input Layer: " << std::endl
-		<< nn.m_inputLayer << std::endl
-		<< INDENT << "Output Layer: " << std::endl
-		<< nn.m_outputLayer << std::endl;
+	os << "*****Neural Network*****" << '\n'
+		<< "Learning Rate: " << nn.m_learningRate << '\n'
+		<< "Activation Function: " << nn.m_activation << '\n'
+		<< "Layers: " << (nn.m_hiddenLayers.size() + 2) << '\n'
+		<< INDENT << "Input Layer: " << '\n'
+		<< nn.m_inputLayer << '\n'
+		<< INDENT << "Output Layer: " << '\n'
+		<< nn.m_outputLayer << '\n';
 
 	for (unsigned i=0; i < nn.m_hiddenLayers.size(); i++) {
-		os << INDENT << "Hidden Layer " << i << ":" << std::endl
-			<< nn.m_hiddenLayers[i] << std::endl;
+		os << INDENT << "Hidden Layer " << i << ":" << '\n'
+			<< nn.m_hiddenLayers[i] << '\n';
 	}
 
 	return os;

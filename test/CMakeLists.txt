@@ -4,6 +4,7 @@ set(This NeuralNetworkTests)
 
 set(Headers
 	MatrixTest.h
+	NeuralNetworkTest.h
 )
 
 set(Sources

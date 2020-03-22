@@ -7,6 +7,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include "MatrixTest.h"
+#include "NeuralNetworkTest.h"
 
 
 int main(int argc, char **argv) {

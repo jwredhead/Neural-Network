@@ -2,7 +2,7 @@
 #include "helper_cuda.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <curand.h>
+#include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
@@ -14,13 +14,37 @@ namespace cuda_extension {
 
 cublasHandle_t handle;
 
+__global__
+void initRand (curandState_t *state) {
+	int id = threadIdx.x + blockIdx.x * 256;
+
+	curand_init(1234, id, 0, &state[id]);
+}
+
+__global__
+void deviceRandomFill (float *matrix, unsigned size, curandState_t *globalState) {
+
+	int id = threadIdx.x + blockIdx.x * 256;
+
+	curandState_t localState;
+	localState = globalState[id];
+
+
+	if(id < size) {
+		matrix[id] = curand_uniform(&localState);
+	}
+
+	globalState[id] = localState;
+}
+
 inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
 
 	cublasStatus_t status;
-	cudaError_t err;
 	const char *str = "";
 
-	curandState *devStates;
+	curandState_t *devStates;
+
+	unsigned maxNodes;
 
 	// Get CUDA device
 	int dev = findCudaDevice(0, &str);
@@ -46,6 +70,8 @@ inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_L
 	// Input Layer
 	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(inLayer.inputs)), inLayer.Nodes * sizeof(float)));
 
+	maxNodes = inLayer.Nodes;
+
 	// Output Layer
 	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(outLayer.output)), outLayer.Nodes * sizeof(float)));
 
@@ -54,6 +80,10 @@ inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_L
 	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(outLayer.error)), outLayer.Nodes * sizeof(float)));
 
 	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(outLayer.weights)), *outLayer.wRows * outLayer.wCols * sizeof(float)));
+
+	if (outLayer.Nodes > maxNodes) {
+		maxNodes = outLayer.Nodes;
+	}
 
 	// Hidden Layers
 	for (auto i : hiddenLayers) {
@@ -65,29 +95,40 @@ inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_L
 
 		CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(i.weights)), *i.wRows * i.wCols * sizeof(float)));
 
+		if (i.Nodes > maxNodes) {
+			maxNodes = i.Nodes;
+		}
+
 	}
 
 	printf("MEMORY ALLOCATED!");
 
-//	// Fill device weight and bias matrices with random data with CURAND
-//	printf("FILLING WEIGHTS AND BIAS WITH RANDOM VALUES...");
-//
-//	printf("INITIALIZING CURAND...");
-//
-//	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&devStates), sizeof(curandState)));
-//
-//
+	// Fill device weight and bias matrices with random data with CURAND
+	printf("FILLING WEIGHTS AND BIAS WITH RANDOM VALUES...");
+
+	printf("INITIALIZING CURAND...");
+
+	unsigned numBlocks = ceil(maxNodes * maxNodes / MAX_THREADS_PER_BLOCK);
+	dim3 dimGrid(numBlocks, 1, 1);
+	dim3 dimBlock(MAX_THREADS_PER_BLOCK, 1, 1);
+
+	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&devStates), numBlocks * MAX_THREADS_PER_BLOCK * sizeof(curandState_t)));
+
+	initRand<<<dimGrid,dimBlock>>>(devStates);
+
+	printf("CURAND INITIALIZED!");
+
+	deviceRandomFill<<<dimGrid, dimBlock>>>(outLayer.weights, *outLayer.wRows * outLayer.wCols, devStates);
+	deviceRandomFill<<<dimGrid, dimBlock>>>(outLayer.bias, outLayer.Nodes, devStates);
+
+	for (auto i : hiddenLayers) {
+		deviceRandomFill<<<dimGrid, dimBlock>>>(i.weights, *i.wRows * i.wCols, devStates);
+		deviceRandomFill<<<dimGrid, dimBlock>>>(i.bias, i.Nodes, devStates);
+	}
+
+	printf("WEIGHT AND BIAS MATRICES FILLED!");
+
 	return 0;
-
-
 }
-
-//__global__
-//void deviceRandomFill (float *matrix, unsigned size, curandState *globalState) {
-//	curandState localState;
-//	localState = global_State[]
-//}
-
-
 
 }

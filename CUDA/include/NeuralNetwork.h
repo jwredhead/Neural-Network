@@ -7,11 +7,11 @@
 
 #pragma once
 
+#include "NeuralNetworkTypes.h"
+#include "cuda_extension.h"
 #include <iostream>
 #include <vector>
 #include <random>
-#include "Matrix.h"
-#include "NeuralNetworkTypes.h"
 
 class NeuralNetwork {
 
@@ -36,6 +36,7 @@ private:
 	NN_Layer m_outputLayer;
 	std::vector<NN_Layer> m_hiddenLayers;
 
+
 	// Default Activation Function is tanh
 	Activation_Function m_activation = Activation_Function::TANH;
 
@@ -46,11 +47,11 @@ private:
 	float sigmoid (float x);
 	float bi_sigmoid(float x);
 
-	void initialize();
+//	void initialize();
 	void feedForward(float* inputs);
-	void randomFill(std::uniform_real_distribution<float> dist, std::mt19937 mt, Matrix<float>* m);
-	Matrix<float> runActivationFunction(const Matrix<float>& m);
-	Matrix<float> calcGradient(const NN_Layer& l);
+//	void randomFill(std::uniform_real_distribution<float> dist, std::mt19937 mt, Matrix<float>* m);
+//	Matrix<float> runActivationFunction(const Matrix<float>& m);
+//	Matrix<float> calcGradient(const NN_Layer& l);
 
 	friend std::ostream& operator<<(std::ostream& os, const NeuralNetwork nn);
 
@@ -58,24 +59,24 @@ private:
 
 #define INDENT "   "
 
-// Ostream Operator
-inline std::ostream& operator<<(std::ostream& os, const NeuralNetwork nn) {
-
-	os << "*****Neural Network*****" << '\n'
-		<< "Learning Rate: " << nn.m_learningRate << '\n'
-		<< "Activation Function: " << nn.m_activation << '\n'
-		<< "Layers: " << (nn.m_hiddenLayers.size() + 2) << '\n'
-		<< INDENT << "Input Layer: " << '\n'
-		<< nn.m_inputLayer << '\n'
-		<< INDENT << "Output Layer: " << '\n'
-		<< nn.m_outputLayer << '\n';
-
-	for (unsigned i=0; i < nn.m_hiddenLayers.size(); i++) {
-		os << INDENT << "Hidden Layer " << i << ":" << '\n'
-			<< nn.m_hiddenLayers[i] << '\n';
-	}
-
-	return os;
-}
+//// Ostream Operator
+//inline std::ostream& operator<<(std::ostream& os, const NeuralNetwork nn) {
+//
+//	os << "*****Neural Network*****" << '\n'
+//		<< "Learning Rate: " << nn.m_learningRate << '\n'
+//		<< "Activation Function: " << nn.m_activation << '\n'
+//		<< "Layers: " << (nn.m_hiddenLayers.size() + 2) << '\n'
+//		<< INDENT << "Input Layer: " << '\n'
+//		<< nn.m_inputLayer << '\n'
+//		<< INDENT << "Output Layer: " << '\n'
+//		<< nn.m_outputLayer << '\n';
+//
+//	for (unsigned i=0; i < nn.m_hiddenLayers.size(); i++) {
+//		os << INDENT << "Hidden Layer " << i << ":" << '\n'
+//			<< nn.m_hiddenLayers[i] << '\n';
+//	}
+//
+//	return os;
+//}
 
 #undef INDENT

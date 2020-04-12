@@ -2,6 +2,7 @@
 #include "helper_cuda.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <map>
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
@@ -9,8 +10,6 @@
 #define  CUDA_CALL(x) do { if((x) !=  cudaSuccess) { \
 	printf ("Error  at %s:%d\n",__FILE__ ,__LINE__); \
 	return  EXIT_FAILURE ;}}  while (0)
-
-#define CUDA_DELETE(x) (x == nullptr) ? cudaFree(x) : 0;
 
 namespace cuda_extension {
 
@@ -39,6 +38,27 @@ void deviceRandomFill (float *matrix, unsigned size, curandState_t *globalState)
 	globalState[id] = localState;
 }
 
+inline cublasOperation_t convertToCublasOp (MATRIX_OP t) {
+
+	cublasOperation_t s;
+
+	std::map<MATRIX_OP, cublasOperation_t> map = {
+			{MATRIX_OP::NORMAL, cublasOperation_t::CUBLAS_OP_N},
+			{MATRIX_OP::TRANSPOSE, cublasOperation_t::CUBLAS_OP_N}
+	};
+
+	s = map.at(t);
+
+	return s;
+}
+
+inline int cudaDelete (float *a) {
+	if (a) {
+		CUDA_CALL(cudaFree(a));
+	}
+	return 0;
+}
+
 inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
 
 	cublasStatus_t status;
@@ -59,7 +79,7 @@ inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_L
 
 	status = cublasCreate(&handle);
 	if (status != CUBLAS_STATUS_SUCCESS) {
-		fprintf(stderr, "CUBLASS FAILED TO CREATE HANDLE!");
+		fprintf(stderr, "CUBLASS FAILED TO CREATE HANDLE!\nERROR: %d", status);
 		return EXIT_FAILURE;
 	}
 
@@ -133,24 +153,69 @@ inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_L
 	return 0;
 }
 
-inline int deleteLayers(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
+inline void deleteLayers(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
 	printf("DELETING LAYERS FROM DEVICE...");
-
 	int error;
-	error = CUDA_DELETE(inLayer.inputs);
-	error += CUDA_DELETE(outLayer.weights);
-	error += CUDA_DELETE(outLayer.bias);
-	error += CUDA_DELETE(outLayer.error);
-	error += CUDA_DELETE(outLayer.output);
+
+	error = cudaDelete(inLayer.inputs);
+
+	error += cudaDelete(outLayer.weights);
+	error +=cudaDelete(outLayer.bias);
+	error +=cudaDelete(outLayer.error);
+	error +=cudaDelete(outLayer.output);
 
 	for ( auto i : hiddenLayers) {
-		error += CUDA_DELETE(i.weights);
-		error += CUDA_DELETE(i.bias);
-		error += CUDA_DELETE(i.error);
-		error += CUDA_DELETE(i.output);
+		error +=cudaDelete(i.weights);
+		error +=cudaDelete(i.bias);
+		error +=cudaDelete(i.error);
+		error +=cudaDelete(i.output);
+	}
+	if (error ==0) {
+		printf("LAYERS DELETED FROM DEVICE!");
+	} else {
+		printf("UNABLE TO DELETE LAYERS FROM DEVICE!/nNUMBER OF ERRORS: %d", error);
 	}
 
-	return error;
+	printf("CLOSING CUBLAS...");
+	cublasStatus_t status = cublasDestroy(handle);
+	if (status != CUBLAS_STATUS_SUCCESS) {
+		fprintf(stderr, "CUBLASS FAILED TO DESTROY HANDLE!/nERROR: %d", status);
+	} else
+	{
+		fprintf(stderr, "CUBLASS CLOSED!");
+	}
+
+}
+
+inline void multiplyAccumulate(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, float *C, int m, int n, int k) {
+	int lda=m;
+	int ldb=k;
+	int ldc=m;
+	const float alf = 1;
+	const float *alpha = &alf;
+	const float bet = 1;
+	const float *beta = &bet;
+
+	cublasStatus_t status;
+	status = cublasSgemm(handle,convertToCublasOp(transA), convertToCublasOp(transB), m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+	if (status != CUBLAS_STATUS_SUCCESS) {
+		fprintf(stderr, "CUBLASS MATRIX MULTIPLY ERROR: %d", status);
+	}
+}
+
+inline int copyVector(float *x, float *y, unsigned size) {
+	CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(x), reinterpret_cast<void*>(y), size, cudaMemcpyDeviceToDevice));
+	return 0;
+}
+
+inline void copyInputs(float *x, float *y, unsigned size) {
+	cublasStatus_t status;
+	status = cublasSetVector(size, sizeof(float), reinterpret_cast<void*>(x), 1, reinterpret_cast<void*>(y), 1);
+	if (status != CUBLAS_STATUS_SUCCESS) {
+		fprintf(stderr, "CUBLASS SET VECTOR ERROR: %d", status);
+	}
+
 }
 
 }
+

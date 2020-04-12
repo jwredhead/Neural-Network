@@ -8,7 +8,7 @@
 #include "NeuralNetwork.h"
 #include <string.h>
 
-
+namespace ce = cuda_extension;
 
 NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned hiddenNodes, unsigned outputNodes) {
 
@@ -20,7 +20,11 @@ NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned hiddenNodes, unsigned
 	hiddenLayer.Nodes = hiddenNodes;
 	m_hiddenLayers.insert(m_hiddenLayers.begin(), hiddenLayer);
 
-	cuda_extension::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
+	int error = ce::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
+
+	if(error) {
+		std::cout << "LAYERS FAILED TO INITIALIZE" << "\n";
+	}
 }
 
 NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned *hiddenNodes, unsigned hiddenLayers, unsigned outputNodes) {
@@ -42,9 +46,17 @@ NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned *hiddenNodes, unsigne
 
 	m_outputLayer.wCols = m_hiddenLayers.back().Nodes;
 
-	cuda_extension::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
+	int error = ce::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
+	if(error) {
+		std::cout << "LAYERS FAILED TO INITIALIZE" << "\n";
+	}
 
 }
+
+NeuralNetwork::~NeuralNetwork() {
+	ce::deleteLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
+}
+
 
  void NeuralNetwork::setActivationFunction(Activation_Function funct) {
 	m_activation =  funct;
@@ -114,76 +126,9 @@ float NeuralNetwork::bi_sigmoid(float x) {
 	return (1 - exp(-x) / (1 + exp(-x)));
 }
 
-//void NeuralNetwork::initialize() {
-//
-//	// SEED Random Number Generator
-//	std::random_device rd;
-//	std::mt19937 mt(rd());
-//	std::uniform_real_distribution<float> dist(-1.0, 1.0);
-//
-//	// Intialize Input layer with null input
-//	Matrix<float> x(m_inputLayer.Nodes, 1);
-//	x.fill(0.0);
-//	m_inputLayer.inputs = x;
-//
-//	// Initialize output layer with random weights, random bias, null output, and null error
-//	Matrix<float> randOutWeights(m_outputLayer.Nodes, m_hiddenLayers.back().Nodes);
-//	randomFill(dist, mt, &randOutWeights);
-//	m_outputLayer.weights = randOutWeights;
-//
-//	Matrix<float> randOutBias(m_outputLayer.Nodes, 1);
-//	randomFill(dist, mt, &randOutBias);
-//	m_outputLayer.bias = randOutBias;
-//
-//	Matrix<float> nullOutput(m_outputLayer.Nodes, 1);
-//	nullOutput.fill(0.0);
-//	m_outputLayer.output = nullOutput;
-//
-//	Matrix<float> nullOutErr(m_outputLayer.Nodes, 1);
-//	nullOutErr.fill(0.0);
-//	m_outputLayer.error = nullOutErr;
-//
-//	// Initialize first hidden layer with random weights, random bias, null output, and null error
-//	Matrix<float> randInWeights(m_hiddenLayers.front().Nodes, m_inputLayer.Nodes);
-//	randomFill(dist, mt, &randInWeights);
-//	m_hiddenLayers.front().weights = randInWeights;
-//
-//	Matrix<float> randInBias(m_hiddenLayers.front().Nodes, 1);
-//	randomFill(dist, mt, &randInBias);
-//	m_hiddenLayers.front().bias = randInBias;
-//
-//	Matrix<float> nullHdnOut(m_hiddenLayers.front().Nodes, 1);
-//	nullHdnOut.fill(0.0);
-//	m_hiddenLayers.front().output = nullHdnOut;
-//
-//	Matrix<float> nullHdnErr(m_hiddenLayers.front().Nodes, 1);
-//	nullHdnErr.fill(0.0);
-//	m_outputLayer.error = nullHdnErr;
-//
-//	// If more hidden layers exist, initialize all hidden layers with random weights, random bias, null output, and null error
-//	if (m_hiddenLayers.size() >1) {
-//		for (unsigned i=1; i<m_hiddenLayers.size(); i++) {
-//			Matrix<float> randHdnWeights(m_hiddenLayers[i].Nodes, m_hiddenLayers[i-1].Nodes);
-//			randomFill(dist, mt, &randHdnWeights);
-//			m_hiddenLayers[i].weights = randHdnWeights;
-//
-//			Matrix<float> randHdnBias(m_hiddenLayers[i].Nodes, 1);
-//			randomFill(dist, mt, &randHdnBias);
-//			m_hiddenLayers[i].bias = randHdnBias;
-//
-//			Matrix<float> nullHdn(m_hiddenLayers[i].Nodes, 1);
-//			nullHdn.fill(0.0);
-//			m_hiddenLayers[i].output = nullHdn;
-//
-//			Matrix<float> nullHdnErr(m_hiddenLayers[i].Nodes, 1);
-//			nullHdnErr.fill(0.0);
-//			m_outputLayer.error = nullHdnErr;
-//		}
-//	}
-//
-//}
-
 void NeuralNetwork::feedForward(float* inputs) {
+
+
 
 //	for (unsigned i=0; i < m_inputLayer.Nodes; i++) {
 //		m_inputLayer.inputs(i,0) = inputs[i];
@@ -206,15 +151,6 @@ void NeuralNetwork::feedForward(float* inputs) {
 //	m_outputLayer.output = runActivationFunction(m_outputLayer.output);
 }
 
-//void NeuralNetwork::randomFill(std::uniform_real_distribution<float> dist, std::mt19937 mt, Matrix<float>* m) {
-//
-//	for (unsigned i=0; i < m->getRows(); i++) {
-//		for (unsigned j=0; j < m->getCols(); j++) {
-//			(*m)(i,j) = dist(mt);
-//		}
-//	}
-//}
-//
 //Matrix<float> NeuralNetwork::runActivationFunction(const Matrix<float>& m) {
 //
 //	Matrix<float> n(m.getRows(), m.getCols());

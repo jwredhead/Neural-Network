@@ -10,6 +10,8 @@
 	printf ("Error  at %s:%d\n",__FILE__ ,__LINE__); \
 	return  EXIT_FAILURE ;}}  while (0)
 
+#define CUDA_DELETE(x) (x == nullptr) ? cudaFree(x) : 0;
+
 namespace cuda_extension {
 
 cublasHandle_t handle;
@@ -129,6 +131,26 @@ inline int initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_L
 	printf("WEIGHT AND BIAS MATRICES FILLED!");
 
 	return 0;
+}
+
+inline int deleteLayers(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
+	printf("DELETING LAYERS FROM DEVICE...");
+
+	int error;
+	error = CUDA_DELETE(inLayer.inputs);
+	error += CUDA_DELETE(outLayer.weights);
+	error += CUDA_DELETE(outLayer.bias);
+	error += CUDA_DELETE(outLayer.error);
+	error += CUDA_DELETE(outLayer.output);
+
+	for ( auto i : hiddenLayers) {
+		error += CUDA_DELETE(i.weights);
+		error += CUDA_DELETE(i.bias);
+		error += CUDA_DELETE(i.error);
+		error += CUDA_DELETE(i.output);
+	}
+
+	return error;
 }
 
 }

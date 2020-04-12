@@ -18,7 +18,7 @@ class NeuralNetwork {
 public:
 	NeuralNetwork(unsigned inputNodes, unsigned hiddenNodes, unsigned outputNodes);
 	NeuralNetwork(unsigned inputNodes, unsigned* hiddenNodes, unsigned hiddenLayers, unsigned outputNodes);
-	~NeuralNetwork() = default;
+	~NeuralNetwork();
 
 	void setActivationFunction(Activation_Function funct);
 	Activation_Function getActivationFunction();
@@ -47,9 +47,7 @@ private:
 	float sigmoid (float x);
 	float bi_sigmoid(float x);
 
-//	void initialize();
 	void feedForward(float* inputs);
-//	void randomFill(std::uniform_real_distribution<float> dist, std::mt19937 mt, Matrix<float>* m);
 //	Matrix<float> runActivationFunction(const Matrix<float>& m);
 //	Matrix<float> calcGradient(const NN_Layer& l);
 

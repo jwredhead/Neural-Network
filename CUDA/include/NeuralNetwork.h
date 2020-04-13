@@ -48,8 +48,6 @@ private:
 	float bi_sigmoid(float x);
 
 	void feedForward(float* inputs);
-//	Matrix<float> runActivationFunction(const Matrix<float>& m);
-//	Matrix<float> calcGradient(const NN_Layer& l);
 
 	friend std::ostream& operator<<(std::ostream& os, const NeuralNetwork nn);
 

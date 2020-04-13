@@ -20,11 +20,7 @@ NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned hiddenNodes, unsigned
 	hiddenLayer.Nodes = hiddenNodes;
 	m_hiddenLayers.insert(m_hiddenLayers.begin(), hiddenLayer);
 
-	int error = ce::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
-
-	if(error) {
-		std::cout << "LAYERS FAILED TO INITIALIZE" << "\n";
-	}
+	ce::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
 }
 
 NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned *hiddenNodes, unsigned hiddenLayers, unsigned outputNodes) {
@@ -46,11 +42,7 @@ NeuralNetwork::NeuralNetwork(unsigned inputNodes, unsigned *hiddenNodes, unsigne
 
 	m_outputLayer.wCols = m_hiddenLayers.back().Nodes;
 
-	int error = ce::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
-	if(error) {
-		std::cout << "LAYERS FAILED TO INITIALIZE" << "\n";
-	}
-
+	ce::initLayers(m_inputLayer, m_hiddenLayers, m_outputLayer);
 }
 
 NeuralNetwork::~NeuralNetwork() {
@@ -77,45 +69,44 @@ float NeuralNetwork::getLearningRate() {
 
 void NeuralNetwork::trainNetwork(float *inputs, float *targets) {
 
-//	feedForward(inputs);
-//
-//	Matrix<float> matTargets(targets, m_outputLayer.Nodes);
-//
-//	m_outputLayer.error = matTargets - m_outputLayer.output;
-//
-//	m_hiddenLayers.back().error = m_outputLayer.weights.transpose() * m_outputLayer.error;
-//
-//	for (unsigned i=(m_hiddenLayers.size()-2); i > -1; i--) {
-//		m_hiddenLayers[i].error = m_hiddenLayers[i+1].weights.transpose() * m_hiddenLayers[i+1].error;
-//	}
-//
-//	Matrix<float> gradients = calcGradient(m_outputLayer);
-//	Matrix<float> deltaWeight = gradients * m_hiddenLayers.back().output.transpose();
-//	m_outputLayer.weights = m_outputLayer.weights + deltaWeight;
-//	m_outputLayer.bias += gradients;
-//
-//	gradients = calcGradient(m_hiddenLayers.front());
-//	deltaWeight = gradients * m_inputLayer.inputs.transpose();
-//	m_hiddenLayers.front().weights = m_hiddenLayers.front().weights + deltaWeight;
-//	m_hiddenLayers.front().bias += gradients;
-//
-//	if (m_hiddenLayers.size() > 1) {
-//		for (unsigned i=1; i < m_hiddenLayers.size(); i++) {
-//			gradients = calcGradient(m_hiddenLayers[i]);
-//			deltaWeight = gradients * m_hiddenLayers[i-1].output.transpose();
-//			m_hiddenLayers[i].weights = m_hiddenLayers[i].weights + deltaWeight;
-//			m_hiddenLayers[i].bias += gradients;
-//		}
-//	}
+	feedForward(inputs);
+
+	ce::calculateError(targets, m_outputLayer.output, m_outputLayer.error, m_outputLayer.Nodes);
+
+	ce::multiply(ce::MATRIX_OP::TRANSPOSE, m_outputLayer.weights,
+					ce::MATRIX_OP::NORMAL, m_outputLayer.error,
+					m_hiddenLayers.back().error,
+					m_outputLayer.wCols,
+					m_hiddenLayers.back().Nodes,
+					*(m_outputLayer.wRows));
+
+	for (unsigned i=(m_hiddenLayers.size()-2); i > -1; i--) {
+		ce::multiply(ce::MATRIX_OP::TRANSPOSE, m_hiddenLayers[i+1].weights,
+						ce::MATRIX_OP::NORMAL, m_hiddenLayers[i+1].error,
+						m_hiddenLayers[i].error,
+						m_hiddenLayers[i+1].wCols,
+						m_hiddenLayers[i].Nodes,
+						*(m_hiddenLayers[i+1].wRows));
+	}
+
+	ce::adjustWeightsBias(m_outputLayer, m_hiddenLayers.back().output, m_hiddenLayers.back().Nodes, m_activation, m_learningRate);
+
+	ce::adjustWeightsBias(m_hiddenLayers.front(), m_inputLayer.inputs, m_inputLayer.Nodes, m_activation, m_learningRate);
+
+	if (m_hiddenLayers.size() > 1) {
+		for (unsigned i=1; i < m_hiddenLayers.size(); i++) {
+			ce::adjustWeightsBias(m_hiddenLayers[i], m_hiddenLayers[i-1].output, m_hiddenLayers[i-1].Nodes, m_activation, m_learningRate);
+		}
+	}
 
 }
 
 void NeuralNetwork::predict(float* inputs, float* outputs) {
-//	feedForward(inputs);
-//	unsigned num_outputs =  m_outputLayer.output.getSize();
-//	for ( unsigned i=0; i < num_outputs; ++i) {
-//		outputs[i] = m_outputLayer.output(i,0);
-//	}
+
+	feedForward(inputs);
+
+	ce::getOutputs(m_outputLayer.output, outputs, m_outputLayer.Nodes);
+
 }
 
 float NeuralNetwork::sigmoid(float x) {
@@ -128,60 +119,38 @@ float NeuralNetwork::bi_sigmoid(float x) {
 
 void NeuralNetwork::feedForward(float* inputs) {
 
+	ce::copyInputs(inputs, m_inputLayer.inputs, m_inputLayer.Nodes);
 
+	ce::copyVector(m_hiddenLayers.front().bias, m_hiddenLayers.front().output, m_hiddenLayers.front().Nodes);
+	ce::multiplyAccumulate(ce::MATRIX_OP::NORMAL,m_hiddenLayers.front().weights,
+							ce::MATRIX_OP::NORMAL, m_inputLayer.inputs,
+							m_hiddenLayers.front().output,
+							*(m_hiddenLayers.front().wRows),
+							m_inputLayer.Nodes,
+							m_hiddenLayers.front().wCols);
+	ce::activationFunction(m_hiddenLayers.front().output, m_hiddenLayers.front().Nodes, m_activation);
 
-//	for (unsigned i=0; i < m_inputLayer.Nodes; i++) {
-//		m_inputLayer.inputs(i,0) = inputs[i];
-//	}
-//
-//	m_hiddenLayers.front().output = m_hiddenLayers.front().weights * m_inputLayer.inputs;
-//	m_hiddenLayers.front().output += (m_hiddenLayers.front().bias);
-//	m_hiddenLayers.front().output = runActivationFunction(m_hiddenLayers.front().output);
-//
-//	if (m_hiddenLayers.size() > 1) {
-//		for (unsigned i=0; i < m_hiddenLayers.size(); i++) {
-//			m_hiddenLayers[i].output = m_hiddenLayers[i].weights * m_hiddenLayers[i].output;
-//			m_hiddenLayers[i].output += m_hiddenLayers[i].bias;
-//			m_hiddenLayers[i].output = runActivationFunction(m_hiddenLayers[i].output);
-//		}
-//	}
-//
-//	m_outputLayer.output = m_outputLayer.weights * m_hiddenLayers.back().output;
-//	m_outputLayer.output += m_outputLayer.bias;
-//	m_outputLayer.output = runActivationFunction(m_outputLayer.output);
+	if (m_hiddenLayers.size() > 1) {
+		for (unsigned i=1; i < m_hiddenLayers.size(); i++) {
+			ce::copyVector(m_hiddenLayers[i].bias, m_hiddenLayers[i].output, m_hiddenLayers[i].Nodes);
+			ce::multiplyAccumulate(ce::MATRIX_OP::NORMAL,m_hiddenLayers[i].weights,
+					ce::MATRIX_OP::NORMAL, m_hiddenLayers[i-1].output,
+					m_hiddenLayers[i].output,
+					*(m_hiddenLayers[i].wRows),
+					m_hiddenLayers[i-1].Nodes,
+					m_hiddenLayers[i].wCols);
+			ce::activationFunction(m_hiddenLayers[i].output, m_hiddenLayers[i].Nodes, m_activation);
+
+		}
+	}
+
+	ce::copyVector(m_outputLayer.bias, m_outputLayer.output, m_hiddenLayers.back().Nodes);
+	ce::multiplyAccumulate(ce::MATRIX_OP::NORMAL,m_outputLayer.weights,
+							ce::MATRIX_OP::NORMAL, m_hiddenLayers.back().output,
+							m_outputLayer.output,
+							*(m_outputLayer.wRows),
+							m_hiddenLayers.back().Nodes,
+							m_outputLayer.wCols);
+	ce::activationFunction(m_outputLayer.output, m_outputLayer.Nodes, m_activation);
+
 }
-
-//Matrix<float> NeuralNetwork::runActivationFunction(const Matrix<float>& m) {
-//
-//	Matrix<float> n(m.getRows(), m.getCols());
-//	for (unsigned i=0; i< m.getRows(); i++) {
-//		for (unsigned j=0; j< m.getCols(); j++) {
-//			switch (m_activation) {
-//				case Activation_Function::SIGMOID: 		n(i,j) = sigmoid(m(i,j)); break;
-//				case Activation_Function::BI_SIGMOID: 	n(i,j) = bi_sigmoid(m(i,j)); break;
-//				case Activation_Function::TANH: 		n(i,j) = tanh(m(i,j)); break;
-//			}
-//		}
-//	}
-//
-//	return n;
-//}
-//
-//Matrix<float> NeuralNetwork::calcGradient(const NN_Layer& l) {
-//
-//	Matrix<float> n(l.output.getRows(), l.output.getCols());
-//	for (unsigned i=0; i< l.output.getRows(); i++) {
-//		for (unsigned j=0; j< l.output.getCols(); j++) {
-//			switch (m_activation) {
-//				case Activation_Function::SIGMOID: 		n(i,j) = l.output(i,j) * (1 - l.output(i,j)); break;
-//				case Activation_Function::BI_SIGMOID: 	n(i,j) = 2 * l.output(i,j) * (1 - l.output(i,j)) ;break;
-//				case Activation_Function::TANH: 		n(i,j) = 1 - ( l.output(i,j) * l.output(i,j) );break;
-//			}
-//		}
-//	}
-//	n = n.hadamardProduct(l.error);
-//	n = n * m_learningRate;
-//
-//	return n;
-//}
-

@@ -43,6 +43,7 @@ struct bisigmoid {
 
 };
 
+// Derivative of Sigmoid functor
 struct sigmoidDerivative {
 
 	__device__ float operator() (float x) {
@@ -51,6 +52,7 @@ struct sigmoidDerivative {
 
 };
 
+// Derivative of Bisigmoid functor
 struct bisigmoidDerivative {
 
 	__device__ float operator() (float x) {
@@ -59,6 +61,7 @@ struct bisigmoidDerivative {
 
 };
 
+// Derivative of Hyperbolic Tangent functor
 struct tanhDerivative {
 
 	__device__ float operator() (float x) {
@@ -67,12 +70,14 @@ struct tanhDerivative {
 
 };
 
+// Initialization kernel for GPU Random Number Generator
 __global__ void initRand (curandState_t *state) {
 	int id = threadIdx.x + blockIdx.x * 256;
 
 	curand_init(1234, id, 0, &state[id]);
 }
 
+// Kernel to fill a given matrix with random numbers
 __global__ void deviceRandomFill (float *matrix, unsigned size, curandState_t *globalState) {
 
 	int id = threadIdx.x + blockIdx.x * 256;
@@ -91,6 +96,7 @@ __global__ void deviceRandomFill (float *matrix, unsigned size, curandState_t *g
 	globalState[id] = localState;
 }
 
+// Kernel to calculate the error between a target matrix and an error matrix
 __global__ void calcError (float *targets, float *output, float *error, unsigned size) {
 	int id = threadIdx.x + blockIdx.x * 256;
 
@@ -113,6 +119,7 @@ __global__ void calcError (float *targets, float *output, float *error, unsigned
 	}
 }
 
+// Kernel to add 2 matrices
 __global__ void matrixAdd (float *x, float *y, unsigned size) {
 	int id = threadIdx.x + blockIdx.x * 256;
 
@@ -134,6 +141,7 @@ __global__ void matrixAdd (float *x, float *y, unsigned size) {
 	}
 }
 
+// Kernel to run a given functor over every element of a matrix
 template <typename F>
 __global__ void runFunction(F f, float *x, unsigned size) {
 	int id = threadIdx.x + blockIdx.x * 256;
@@ -155,6 +163,7 @@ __global__ void runFunction(F f, float *x, unsigned size) {
 	}
 }
 
+// Kernel to calculate the gradient between outputs, x, and errors, y,
 template <typename F>
 __global__ void calcGradient(F f, float *gradient, float *x, float *y, unsigned size, float lr) {
 	int id = threadIdx.x + blockIdx.x * 256;
@@ -178,6 +187,7 @@ __global__ void calcGradient(F f, float *gradient, float *x, float *y, unsigned 
 	}
 }
 
+// Convert MATRIX_OP to cublasOperation_t
 inline cublasOperation_t convertToCublasOp (MATRIX_OP t) {
 
 	cublasOperation_t s;
@@ -192,6 +202,7 @@ inline cublasOperation_t convertToCublasOp (MATRIX_OP t) {
 	return s;
 }
 
+// If device ptr isn't null, free it
 inline int cudaDelete (float *a) {
 	if (a) {
 		CUDA_CALL(cudaFree(a));
@@ -199,6 +210,7 @@ inline int cudaDelete (float *a) {
 	return 0;
 }
 
+// Initialize Neural Network Layers on the device
 inline void initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
 
 	cublasStatus_t status;
@@ -293,6 +305,7 @@ inline void initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_
 
 }
 
+// Delete Neural Network from device
 inline void deleteLayers(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
 	printf("DELETING LAYERS FROM DEVICE...");
 	int error;
@@ -327,6 +340,7 @@ inline void deleteLayers(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, N
 
 }
 
+// Wrapper for CUBLAS SGEMM matrix multiplication, calculates C = A * B + C
 inline void multiplyAccumulate(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, float *C, int m, int n, int k) {
 	int lda=m;
 	int ldb=k;
@@ -343,6 +357,7 @@ inline void multiplyAccumulate(MATRIX_OP transA, float *A, MATRIX_OP transB, flo
 	}
 }
 
+// Wrapper for CUBLAS SGEMM matrix multiplication, calculates C = A * B
 inline void multiply(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, float *C, int m, int n, int k) {
 	int lda=m;
 	int ldb=k;
@@ -359,10 +374,12 @@ inline void multiply(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, flo
 	}
 }
 
+// Copies data from src to dst, where both pointers are device ptrs
 inline void copyVector(float *src, float *dst, unsigned size) {
 	CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(dst), reinterpret_cast<void*>(src), size * sizeof(float), cudaMemcpyDeviceToDevice));
 }
 
+// Copies inputs over to device
 inline void copyInputs(float *src, float *dst, unsigned size) {
 	cublasStatus_t status;
 	status = cublasSetVector(size, sizeof(float), reinterpret_cast<void*>(src), 1, reinterpret_cast<void*>(dst), 1);
@@ -372,6 +389,7 @@ inline void copyInputs(float *src, float *dst, unsigned size) {
 
 }
 
+// Runs activation function over matrix
 inline void activationFunction(float *x, unsigned size, Activation_Function f) {
 
 	sigmoid sfunct;
@@ -391,6 +409,7 @@ inline void activationFunction(float *x, unsigned size, Activation_Function f) {
 	cudaDeviceSynchronize();
 }
 
+// Calculates the error between given targets and outputs
 inline void calculateError(float *targets, float *outputs, float *error, unsigned size) {
 	unsigned numBlocks = ceil(maxNodes * maxNodes / MAX_THREADS_PER_BLOCK);
 	unsigned numThreads = (maxNodes > MAX_THREADS_PER_BLOCK) ? MAX_THREADS_PER_BLOCK : maxNodes;
@@ -402,6 +421,7 @@ inline void calculateError(float *targets, float *outputs, float *error, unsigne
 	cudaDeviceSynchronize();
 }
 
+// Adjusts a given layer's weights and bias back propogating gradient descent
 void adjustWeightsBias(NN_Layer layer, float *inputs, unsigned inputSize, Activation_Function f, float learningRate) {
 
 	float *gradient, *deltaWeight;
@@ -436,6 +456,7 @@ void adjustWeightsBias(NN_Layer layer, float *inputs, unsigned inputSize, Activa
 	cudaDelete(deltaWeight);
 }
 
+// Retrieves Neural Network outputs from device to host
 void getOutputs(float *d_outputs, float *h_outputs, unsigned size) {
 
 	CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(h_outputs), reinterpret_cast<void*>(d_outputs), size * sizeof(float), cudaMemcpyDeviceToHost));

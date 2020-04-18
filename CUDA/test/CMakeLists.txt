@@ -10,9 +10,10 @@ set(Sources
 	RunTests.cpp
 )
 
-add_executable(${This} ${Sources} ${Headers})
+add_executable(${This})
+target_sources(${This} PRIVATE RunTests.cpp)
 
-target_include_directories(${This} PRIVATE ../include)
+target_include_directories(${This} PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 target_link_libraries(${This} PUBLIC
 	gtest

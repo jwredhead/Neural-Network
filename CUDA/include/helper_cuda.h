@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cublas_v2.h>
 #include <helper_string.h>
 
 #ifndef EXIT_WAIVED
@@ -49,7 +50,7 @@ static const char *_cudaGetErrorEnum(CUresult error) {
 }
 #endif
 
-#ifdef CUBLAS_API_H_
+
 // cuBLAS API errors
 static const char *_cudaGetErrorEnum(cublasStatus_t error) {
   switch (error) {
@@ -86,7 +87,7 @@ static const char *_cudaGetErrorEnum(cublasStatus_t error) {
 
   return "<unknown>";
 }
-#endif
+
 
 #ifdef _CUFFT_H_
 // cuFFT API errors

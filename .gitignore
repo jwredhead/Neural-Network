@@ -2,6 +2,7 @@
 *.log
 # ignore build folder
 build/
+lib/
 # ignore eclipse project folders
 .cproject
 .project

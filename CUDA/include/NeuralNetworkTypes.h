@@ -34,7 +34,7 @@ enum class Activation_Function{
 
 struct NN_Layer {
 	unsigned Nodes;
-	unsigned* wRows = &Nodes;
+	unsigned wRows;
 	unsigned wCols;
 	float *weights;
 	float *bias;

@@ -6,8 +6,6 @@
  */
 // TODO Write Unit Tests For Neural Network
 #include <iostream>
-#include <array>
-#include <math.h>
 #include <gtest/gtest.h>
 #include "NeuralNetwork.h"
 
@@ -71,7 +69,7 @@ TEST_F(NeuralNetworkTest, TestTraining) {
 	}
 
 	float pred;
-	float tolerance = 0.01;
+	float tolerance = 0.1;
 	nn->predict(training_data[0].input, &pred);
 	EXPECT_NEAR(0,pred, tolerance);
 	nn->predict(training_data[1].input, &pred);

@@ -2,31 +2,31 @@ cmake_minimum_required(VERSION 3.16)
 
 set(This NeuralNetwork)
 
-project(${This} C CXX CUDA)
-
-set(CMAKE_C_STANDARD 99)
+project(${This} LANGUAGES CUDA CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 14)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
-#enable_testing()
+set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+#set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
-set(Headers
-	cuda_extension.h
-	NeuralNetworkTypes.h
-	NeuralNetwork.h
+enable_language(CUDA)
+
+enable_testing()
+
+add_library(${This} SHARED)
+target_sources(${This} PRIVATE src/NeuralNetwork.cpp)
+target_sources(${This} PRIVATE src/cuda_extension.cu)
+target_include_directories(${This} PUBLIC "include")
+
+target_link_libraries(${This} PRIVATE
+	${CUDA_LIBRARIES}
+	${CUDA_cudart_shared_LIBRARY}
+	${CUDA_cublas_LIBRARY}
+	${CUDA_curand_LIBRARY}
 )
-list(TRANSFORM Headers PREPEND "include/")
-
-set(Sources
-	cuda_extension.cu
-	NeuralNetwork.cpp
-)
-
-list(TRANSFORM Sources PREPEND "src/")
-
-add_library(${This} STATIC ${Sources} ${Headers})
 
 target_include_directories(${This} PRIVATE include)
-
-#add_subdirectory(test)
+set_property(TARGET ${This} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+add_subdirectory(test)

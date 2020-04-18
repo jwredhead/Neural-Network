@@ -1,20 +1,22 @@
 // CUSTOM INCLUDES
 #include "cuda_extension.h"
-#include "helper_cuda.h"
+
 
 // CPP INCLUDES
 #include <stdio.h>
 #include <stdlib.h>
 #include <map>
+#include <string>
 
 // CUDA INCLUDES
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include "helper_cuda.h"
 
 // Macro for output of cuda errors
 #define  CUDA_CALL(x) do { if((x) !=  cudaSuccess) { \
-	printf ("Error  at %s:%d\n",__FILE__ ,__LINE__); \
+	printf ("Error  at %s:%d\nError Value: %s\n",__FILE__ ,__LINE__, cudaGetErrorString(x)); \
 	exit(EXIT_FAILURE);}}  while (0)
 
 namespace cuda_extension {
@@ -23,52 +25,6 @@ namespace cuda_extension {
 cublasHandle_t handle; // Handle for Cublas
 unsigned maxNodes; // Max number of nodes
 
-// Sigmoid functor
-struct sigmoid {
-
-	__device__ float operator() (float x)
-	{
-		return 1 / (1 + expf(-x));
-	}
-
-};
-
-// Bisigmoid functor
-struct bisigmoid {
-
-	__device__ float operator() (float x)
-	{
-		return (1 - expf(-x) / (1 + expf(-x)));
-	}
-
-};
-
-// Derivative of Sigmoid functor
-struct sigmoidDerivative {
-
-	__device__ float operator() (float x) {
-		return x * ( 1 - x);
-	}
-
-};
-
-// Derivative of Bisigmoid functor
-struct bisigmoidDerivative {
-
-	__device__ float operator() (float x) {
-		return 2 * x * (1 - x);
-	}
-
-};
-
-// Derivative of Hyperbolic Tangent functor
-struct tanhDerivative {
-
-	__device__ float operator() (float x) {
-		return 1 - x * x;
-	}
-
-};
 
 // Initialization kernel for GPU Random Number Generator
 __global__ void initRand (curandState_t *state) {
@@ -92,7 +48,6 @@ __global__ void deviceRandomFill (float *matrix, unsigned size, curandState_t *g
 	if(id < size) {
 		matrix[id] = s_value;
 	}
-
 	globalState[id] = localState;
 }
 
@@ -107,7 +62,6 @@ __global__ void calcError (float *targets, float *output, float *error, unsigned
 		e = error[id];
 		o = output[id];
 	}
-
 	__syncthreads();
 
 	e = t - o;
@@ -141,9 +95,8 @@ __global__ void matrixAdd (float *x, float *y, unsigned size) {
 	}
 }
 
-// Kernel to run a given functor over every element of a matrix
-template <typename F>
-__global__ void runFunction(F f, float *x, unsigned size) {
+// Kernel to run sigmoid function over every element of a matrix
+__global__ void runSigmoidFunction(float *x, unsigned size) {
 	int id = threadIdx.x + blockIdx.x * 256;
 
 	float t = 0;
@@ -154,7 +107,49 @@ __global__ void runFunction(F f, float *x, unsigned size) {
 
 	__syncthreads();
 
-	t = f(t);
+	t = (1 - expf(-t) / (1 + expf(-t)));
+
+	__syncthreads();
+
+	if (id < size) {
+		x[id] = t;
+	}
+}
+
+// Kernel to run bisigmoid function over every element of a matrix
+__global__ void runBisigmoidFunction(float *x, unsigned size) {
+	int id = threadIdx.x + blockIdx.x * 256;
+
+	float t = 0;
+
+	if (id < size) {
+		t = x[id];
+	}
+
+	__syncthreads();
+
+	t = 1 - expf(-t) / (1 + expf(-t));
+
+	__syncthreads();
+
+	if (id < size) {
+		x[id] = t;
+	}
+}
+
+// Kernel to run tanh function over every element of a matrix
+__global__ void runTanhFunction(float *x, unsigned size) {
+	int id = threadIdx.x + blockIdx.x * 256;
+
+	float t = 0;
+
+	if (id < size) {
+		t = x[id];
+	}
+
+	__syncthreads();
+
+	t = tanh(t);
 
 	__syncthreads();
 
@@ -164,8 +159,7 @@ __global__ void runFunction(F f, float *x, unsigned size) {
 }
 
 // Kernel to calculate the gradient between outputs, x, and errors, y,
-template <typename F>
-__global__ void calcGradient(F f, float *gradient, float *x, float *y, unsigned size, float lr) {
+__global__ void calcGradientSigmoid( float *gradient, float *x, float *y, unsigned size, float lr) {
 	int id = threadIdx.x + blockIdx.x * 256;
 
 	float t = 0, e = 0, g = 0;
@@ -176,7 +170,7 @@ __global__ void calcGradient(F f, float *gradient, float *x, float *y, unsigned 
 
 	__syncthreads();
 
-	g = f(t);
+	g = t * ( 1 - t);
 	g = g * e;
 	g = g * lr;
 
@@ -187,6 +181,51 @@ __global__ void calcGradient(F f, float *gradient, float *x, float *y, unsigned 
 	}
 }
 
+// Kernel to calculate the gradient between outputs, x, and errors, y,
+__global__ void calcGradientBisigmoid( float *gradient, float *x, float *y, unsigned size, float lr) {
+	int id = threadIdx.x + blockIdx.x * 256;
+
+	float t = 0, e = 0, g = 0;
+	if (id < size) {
+		t = x[id];
+		e = y[id];
+	}
+
+	__syncthreads();
+
+	g = 2 * t * (1 - t);
+	g = g * e;
+	g = g * lr;
+
+	__syncthreads();
+
+	if (id < size) {
+		gradient[id] = g;
+	}
+}
+
+// Kernel to calculate the gradient between outputs, x, and errors, y,
+__global__ void calcGradientTanh( float *gradient, float *x, float *y, unsigned size, float lr) {
+	int id = threadIdx.x + blockIdx.x * 256;
+
+	float t = 0, e = 0, g = 0;
+	if (id < size) {
+		t = x[id];
+		e = y[id];
+	}
+
+	__syncthreads();
+
+	g = 1 - t * t;
+	g = g * e;
+	g = g * lr;
+
+	__syncthreads();
+
+	if (id < size) {
+		gradient[id] = g;
+	}
+}
 // Convert MATRIX_OP to cublasOperation_t
 inline cublasOperation_t convertToCublasOp (MATRIX_OP t) {
 
@@ -211,7 +250,7 @@ inline int cudaDelete (float *a) {
 }
 
 // Initialize Neural Network Layers on the device
-inline void initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
+void initLayers(IN_Layer *inLayer, std::vector<NN_Layer> *hiddenLayers, NN_Layer *outLayer) {
 
 	cublasStatus_t status;
 	const char *str = "";
@@ -221,52 +260,52 @@ inline void initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_
 	// Get CUDA device
 	int dev = findCudaDevice(0, &str);
 	if (dev == -1) {
-		fprintf(stderr, "FINDCUDADEVICE ERROR: -1");
+		fprintf(stderr, "FINDCUDADEVICE ERROR: -1\n");
 		exit(EXIT_FAILURE);
 	}
 
 	// Create CUBLAS Handle
-	printf("INITIALIZING CUBLASS...");
+	printf("INITIALIZING CUBLASS...\n");
 
 	status = cublasCreate(&handle);
 	if (status != CUBLAS_STATUS_SUCCESS) {
-		fprintf(stderr, "CUBLASS FAILED TO CREATE HANDLE!\nERROR: %d", status);
+		fprintf(stderr, "CUBLASS FAILED TO CREATE HANDLE!\nERROR: %s\n", _cudaGetErrorEnum(status));
 		exit(EXIT_FAILURE);
 	}
 
-	printf("CUBLASS INITIALIZED!");
+	printf("CUBLASS INITIALIZED!\n");
 
 
 	// Allocate Memory on device for layers
-	printf("ALLOCATING DEVICE MEMORY...");
+	printf("ALLOCATING DEVICE MEMORY...\n");
 
 	// Input Layer
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(inLayer.inputs)), inLayer.Nodes * sizeof(float)));
+	CUDA_CALL(cudaMalloc(&(inLayer->inputs), inLayer->Nodes * sizeof(float)));
 
-	maxNodes = inLayer.Nodes;
+	maxNodes = inLayer->Nodes;
 
 	// Output Layer
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(outLayer.output)), outLayer.Nodes * sizeof(float)));
+	CUDA_CALL(cudaMalloc(&(outLayer->output), outLayer->Nodes * sizeof(float)));
 
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(outLayer.bias)), outLayer.Nodes * sizeof(float)));
+	CUDA_CALL(cudaMalloc(&(outLayer->bias), outLayer->Nodes * sizeof(float)));
 
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(outLayer.error)), outLayer.Nodes * sizeof(float)));
+	CUDA_CALL(cudaMalloc(&(outLayer->error), outLayer->Nodes * sizeof(float)));
 
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(outLayer.weights)), *outLayer.wRows * outLayer.wCols * sizeof(float)));
+	CUDA_CALL(cudaMalloc(&(outLayer->weights), outLayer->wRows * outLayer->wCols * sizeof(float)));
 
-	if (outLayer.Nodes > maxNodes) {
-		maxNodes = outLayer.Nodes;
+	if (outLayer->Nodes > maxNodes) {
+		maxNodes = outLayer->Nodes;
 	}
 
 	// Hidden Layers
-	for (auto i : hiddenLayers) {
-		CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(i.output)), i.Nodes * sizeof(float)));
+	for (auto&& i : *hiddenLayers) {
+		CUDA_CALL(cudaMalloc(&(i.output), i.Nodes * sizeof(float)));
 
-		CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(i.bias)), i.Nodes * sizeof(float)));
+		CUDA_CALL(cudaMalloc(&(i.bias), i.Nodes * sizeof(float)));
 
-		CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(i.error)), i.Nodes * sizeof(float)));
+		CUDA_CALL(cudaMalloc(&(i.error), i.Nodes * sizeof(float)));
 
-		CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&(i.weights)), *i.wRows * i.wCols * sizeof(float)));
+		CUDA_CALL(cudaMalloc(&(i.weights), i.wRows * i.wCols * sizeof(float)));
 
 		if (i.Nodes > maxNodes) {
 			maxNodes = i.Nodes;
@@ -274,183 +313,168 @@ inline void initDevice(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_
 
 	}
 
-	printf("MEMORY ALLOCATED!");
+	printf("MEMORY ALLOCATED!\n");
 
 	// Fill device weight and bias matrices with random data with CURAND
-	printf("FILLING WEIGHTS AND BIAS WITH RANDOM VALUES...");
+	printf("FILLING WEIGHTS AND BIAS WITH RANDOM VALUES...\n");
 
-	printf("INITIALIZING CURAND...");
+	printf("INITIALIZING CURAND...\n");
 
 	unsigned numBlocks = ceil(maxNodes * maxNodes / MAX_THREADS_PER_BLOCK);
 	unsigned numThreads = (maxNodes > MAX_THREADS_PER_BLOCK) ? MAX_THREADS_PER_BLOCK : maxNodes;
 	dim3 dimGrid(numBlocks, 1, 1);
 	dim3 dimBlock(numThreads, 1, 1);
 
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&devStates), numBlocks * MAX_THREADS_PER_BLOCK * sizeof(curandState_t)));
+	CUDA_CALL(cudaMalloc(&devStates, numBlocks * MAX_THREADS_PER_BLOCK * sizeof(curandState_t)));
 
 	initRand<<<dimGrid,dimBlock>>>(devStates);
 
-	printf("CURAND INITIALIZED!");
+	printf("CURAND INITIALIZED!\n");
 
-	deviceRandomFill<<<dimGrid, dimBlock>>>(outLayer.weights, *outLayer.wRows * outLayer.wCols, devStates);
-	deviceRandomFill<<<dimGrid, dimBlock>>>(outLayer.bias, outLayer.Nodes, devStates);
+	deviceRandomFill<<<dimGrid, dimBlock>>>(outLayer->weights, outLayer->wRows * outLayer->wCols, devStates);
+	deviceRandomFill<<<dimGrid, dimBlock>>>(outLayer->bias, outLayer->Nodes, devStates);
 
-	for (auto i : hiddenLayers) {
-		deviceRandomFill<<<dimGrid, dimBlock>>>(i.weights, *i.wRows * i.wCols, devStates);
+	for (auto i : *hiddenLayers) {
+		deviceRandomFill<<<dimGrid, dimBlock>>>(i.weights, i.wRows * i.wCols, devStates);
 		deviceRandomFill<<<dimGrid, dimBlock>>>(i.bias, i.Nodes, devStates);
 	}
 
-	cudaDeviceSynchronize();
-	printf("WEIGHT AND BIAS MATRICES FILLED!");
+	CUDA_CALL(cudaDeviceSynchronize());
+	printf("WEIGHT AND BIAS MATRICES FILLED!\n");
 
 }
 
 // Delete Neural Network from device
-inline void deleteLayers(IN_Layer inLayer, std::vector<NN_Layer> hiddenLayers, NN_Layer outLayer) {
-	printf("DELETING LAYERS FROM DEVICE...");
+void deleteLayers(IN_Layer *inLayer, std::vector<NN_Layer> *hiddenLayers, NN_Layer *outLayer) {
+	printf("DELETING LAYERS FROM DEVICE...\n");
 	int error;
 
-	error = cudaDelete(inLayer.inputs);
+	error = cudaDelete(inLayer->inputs);
 
-	error += cudaDelete(outLayer.weights);
-	error +=cudaDelete(outLayer.bias);
-	error +=cudaDelete(outLayer.error);
-	error +=cudaDelete(outLayer.output);
+	error += cudaDelete(outLayer->weights);
+	error +=cudaDelete(outLayer->bias);
+	error +=cudaDelete(outLayer->error);
+	error +=cudaDelete(outLayer->output);
 
-	for ( auto i : hiddenLayers) {
+	for ( auto&& i : *hiddenLayers) {
 		error +=cudaDelete(i.weights);
 		error +=cudaDelete(i.bias);
 		error +=cudaDelete(i.error);
 		error +=cudaDelete(i.output);
 	}
 	if (error ==0) {
-		printf("LAYERS DELETED FROM DEVICE!");
+		printf("LAYERS DELETED FROM DEVICE!\n");
 	} else {
-		printf("UNABLE TO DELETE LAYERS FROM DEVICE!/nNUMBER OF ERRORS: %d", error);
+		printf("UNABLE TO DELETE LAYERS FROM DEVICE!/nNUMBER OF ERRORS: %d\n", error);
 	}
 
-	printf("CLOSING CUBLAS...");
+	printf("CLOSING CUBLAS...\n");
 	cublasStatus_t status = cublasDestroy(handle);
 	if (status != CUBLAS_STATUS_SUCCESS) {
-		fprintf(stderr, "CUBLASS FAILED TO DESTROY HANDLE!/nERROR: %d", status);
+		fprintf(stderr, "CUBLASS FAILED TO DESTROY HANDLE!\nERROR: %s\n", _cudaGetErrorEnum(status));
 	} else
 	{
-		fprintf(stderr, "CUBLASS CLOSED!");
+		printf("CUBLASS CLOSED!\n");
 	}
 
 }
 
 // Wrapper for CUBLAS SGEMM matrix multiplication, calculates C = A * B + C
-inline void multiplyAccumulate(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, float *C, int m, int n, int k) {
-	int lda=m;
-	int ldb=k;
-	int ldc=m;
-	const float alf = 1;
-	const float *alpha = &alf;
-	const float bet = 1;
-	const float *beta = &bet;
+void multiplyAccumulate(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, float *C, int A_rows, int A_cols, int B_cols) {
+	float alpha = 1.0;
+	float beta = 1.0;
+
 
 	cublasStatus_t status;
-	status = cublasSgemm(handle,convertToCublasOp(transA), convertToCublasOp(transB), m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+	status = cublasSgemm(handle,convertToCublasOp(transB), convertToCublasOp(transA), B_cols, A_rows, A_cols, &alpha, B, B_cols, A, A_cols, &beta, C, B_cols);
 	if (status != CUBLAS_STATUS_SUCCESS) {
-		fprintf(stderr, "CUBLASS MATRIX MULTIPLY ERROR: %d", status);
+		fprintf(stderr, "CUBLASS MATRIX MULTIPLY ERROR: %s\n", _cudaGetErrorEnum(status));
 	}
 }
 
 // Wrapper for CUBLAS SGEMM matrix multiplication, calculates C = A * B
-inline void multiply(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, float *C, int m, int n, int k) {
-	int lda=m;
-	int ldb=k;
-	int ldc=m;
-	const float alf = 1;
-	const float *alpha = &alf;
-	const float bet = 0;
-	const float *beta = &bet;
+void multiply(MATRIX_OP transA, float *A, MATRIX_OP transB, float *B, float *C, int A_rows, int A_cols, int B_cols) {
+	float alpha= 1.0;
+	float beta = 0.0;
+
 
 	cublasStatus_t status;
-	status = cublasSgemm(handle,convertToCublasOp(transA), convertToCublasOp(transB), m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+	status = cublasSgemm(handle,convertToCublasOp(transB), convertToCublasOp(transA), B_cols, A_rows, A_cols, &alpha, B, B_cols, A, A_cols, &beta, C, B_cols);
 	if (status != CUBLAS_STATUS_SUCCESS) {
-		fprintf(stderr, "CUBLASS MATRIX MULTIPLY ERROR: %d", status);
+		fprintf(stderr, "CUBLASS MATRIX MULTIPLY ERROR: %s\n", _cudaGetErrorEnum(status));
 	}
 }
 
 // Copies data from src to dst, where both pointers are device ptrs
-inline void copyVector(float *src, float *dst, unsigned size) {
-	CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(dst), reinterpret_cast<void*>(src), size * sizeof(float), cudaMemcpyDeviceToDevice));
+void copyVector(NN_Layer *layer) {
+	CUDA_CALL(cudaMemcpy(layer->output, layer->bias,  layer->Nodes * sizeof(float), cudaMemcpyDeviceToDevice));
 }
 
 // Copies inputs over to device
-inline void copyInputs(float *src, float *dst, unsigned size) {
-	cublasStatus_t status;
-	status = cublasSetVector(size, sizeof(float), reinterpret_cast<void*>(src), 1, reinterpret_cast<void*>(dst), 1);
-	if (status != CUBLAS_STATUS_SUCCESS) {
-		fprintf(stderr, "CUBLASS SET VECTOR ERROR: %d", status);
-	}
-
+void copyInputs(float *src, IN_Layer *inLayer) {
+	CUDA_CALL(cudaMemcpy(inLayer->inputs, src, inLayer->Nodes * sizeof(float), cudaMemcpyHostToDevice));
 }
 
 // Runs activation function over matrix
-inline void activationFunction(float *x, unsigned size, Activation_Function f) {
-
-	sigmoid sfunct;
-	bisigmoid bfunct;
+void activationFunction(float *x, unsigned size, Activation_Function f) {
 
 	unsigned numBlocks = ceil(maxNodes * maxNodes / MAX_THREADS_PER_BLOCK);
 	unsigned numThreads = (maxNodes > MAX_THREADS_PER_BLOCK) ? MAX_THREADS_PER_BLOCK : maxNodes;
 	dim3 dimGrid(numBlocks, 1, 1);
 	dim3 dimBlock(numThreads, 1, 1);
-
 	switch (f) {
-		case Activation_Function::SIGMOID: runFunction<<<dimGrid, dimBlock>>>(sfunct, x, size); break;
-		case Activation_Function::BI_SIGMOID: runFunction<<<dimGrid, dimBlock>>>(bfunct, x, size); break;
-		case Activation_Function::TANH: runFunction<<<dimGrid, dimBlock>>>(tanhf, x, size); break;
+		case Activation_Function::SIGMOID: runSigmoidFunction<<<dimGrid, dimBlock>>>(x, size); break;
+		case Activation_Function::BI_SIGMOID: runBisigmoidFunction<<<dimGrid, dimBlock>>>(x, size); break;
+		case Activation_Function::TANH: runTanhFunction<<<dimGrid, dimBlock>>>(x, size); break;
 	}
 
-	cudaDeviceSynchronize();
+	CUDA_CALL(cudaDeviceSynchronize());
 }
 
 // Calculates the error between given targets and outputs
-inline void calculateError(float *targets, float *outputs, float *error, unsigned size) {
+void calculateError(float *targets, float *outputs, float *error, unsigned size) {
+	float * d_targets;
+	CUDA_CALL(cudaMalloc(&d_targets, size * sizeof(float)));
+	CUDA_CALL(cudaMemcpy(d_targets, targets, size * sizeof(float), cudaMemcpyHostToDevice));
+
+
 	unsigned numBlocks = ceil(maxNodes * maxNodes / MAX_THREADS_PER_BLOCK);
 	unsigned numThreads = (maxNodes > MAX_THREADS_PER_BLOCK) ? MAX_THREADS_PER_BLOCK : maxNodes;
 	dim3 dimGrid(numBlocks, 1, 1);
 	dim3 dimBlock(numThreads, 1, 1);
 
-	calcError<<<dimGrid, dimBlock>>>(targets, outputs, error, size);
+	calcError<<<dimGrid, dimBlock>>>(d_targets, outputs, error, size);
 
-	cudaDeviceSynchronize();
+	CUDA_CALL(cudaDeviceSynchronize());
 }
 
 // Adjusts a given layer's weights and bias back propogating gradient descent
-void adjustWeightsBias(NN_Layer layer, float *inputs, unsigned inputSize, Activation_Function f, float learningRate) {
+void adjustWeightsBias(NN_Layer *layer, float *inputs, unsigned inputSize, Activation_Function f, float learningRate) {
 
 	float *gradient, *deltaWeight;
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&gradient), layer.Nodes * sizeof(float)));
-	CUDA_CALL(cudaMalloc(reinterpret_cast<void**>(&deltaWeight), layer.Nodes * inputSize *sizeof(float)));
+
+	CUDA_CALL(cudaMalloc(&gradient, layer->Nodes * sizeof(float)));
+	CUDA_CALL(cudaMalloc(&deltaWeight, layer->Nodes * inputSize *sizeof(float)));
 
 	unsigned numBlocks = ceil(maxNodes * maxNodes / MAX_THREADS_PER_BLOCK);
 	unsigned numThreads = (maxNodes > MAX_THREADS_PER_BLOCK) ? MAX_THREADS_PER_BLOCK : maxNodes;
 	dim3 dimGrid(numBlocks, 1, 1);
 	dim3 dimBlock(numThreads, 1, 1);
 
-	sigmoidDerivative sfunct;
-	bisigmoidDerivative bfunct;
-	tanhDerivative dfunct;
-
 	switch (f) {
-		case Activation_Function::SIGMOID: calcGradient<<<dimGrid, dimBlock>>>(sfunct, gradient, layer.output, layer.error, layer.Nodes, learningRate); break;
-		case Activation_Function::BI_SIGMOID: calcGradient<<<dimGrid, dimBlock>>>(bfunct, gradient, layer.output, layer.error, layer.Nodes, learningRate); break;
-		case Activation_Function::TANH: calcGradient<<<dimGrid, dimBlock>>>(dfunct, gradient, layer.output, layer.error, layer.Nodes, learningRate); break;
+		case Activation_Function::SIGMOID: calcGradientSigmoid<<<dimGrid, dimBlock>>>(gradient, layer->output, layer->error, layer->Nodes, learningRate); break;
+		case Activation_Function::BI_SIGMOID: calcGradientBisigmoid<<<dimGrid, dimBlock>>>(gradient, layer->output, layer->error, layer->Nodes, learningRate); break;
+		case Activation_Function::TANH: calcGradientTanh<<<dimGrid, dimBlock>>>(gradient, layer->output, layer->error, layer->Nodes, learningRate); break;
 	}
 
-	cudaDeviceSynchronize();
+	CUDA_CALL(cudaDeviceSynchronize());
 
-	multiply(MATRIX_OP::NORMAL, gradient, MATRIX_OP::TRANSPOSE, inputs, deltaWeight, layer.Nodes, inputSize, 1);
+	multiply(MATRIX_OP::NORMAL, gradient, MATRIX_OP::TRANSPOSE, inputs, deltaWeight, layer->Nodes, 1, inputSize);
 
-	matrixAdd<<<dimGrid, dimBlock>>>(layer.weights, deltaWeight, layer.Nodes);
-	matrixAdd<<<dimGrid, dimBlock>>>(layer.bias, gradient, layer.Nodes);
+	matrixAdd<<<dimGrid, dimBlock>>>(layer->weights, deltaWeight, layer->Nodes);
+	matrixAdd<<<dimGrid, dimBlock>>>(layer->bias, gradient, layer->Nodes);
 
-	cudaDeviceSynchronize();
+	CUDA_CALL(cudaDeviceSynchronize());
 
 	cudaDelete(gradient);
 	cudaDelete(deltaWeight);

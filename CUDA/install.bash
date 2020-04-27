@@ -5,6 +5,7 @@ FILE=lib/libNeuralNetwork.so
 
 if [ -f "$FILE" ]; then
 	cp include/NeuralNetwork.h ../TEXT_CONV/include
+	cp include/NeuralNetworkTypes.h ../TEXT_CONV/include
 	cp $FILE ../TEXT_CONV/lib
 	echo "$FILE INSTALLED"
 else 
